@@ -87,19 +87,161 @@
             </div>
           </div>
 
-          <p class="intro intro--compact">
-            Il collegamento con Supabase funziona. Il modulo di compilazione
-            verrà attivato nel prossimo step.
-          </p>
+          <section id="campaign-loading" class="campaign-state" aria-live="polite">
+            <div class="notice">
+              <span class="notice-dot notice-dot--loading" aria-hidden="true"></span>
+              <div>
+                <strong>Ricerca della campagna aperta</strong>
+                <span>Attendi qualche istante.</span>
+              </div>
+            </div>
+          </section>
 
-          <p id="logout-message" class="form-message" role="status" aria-live="polite"></p>
+          <section id="campaign-unavailable" class="campaign-state" hidden aria-live="polite">
+            <div class="notice notice--warning">
+              <span class="notice-dot notice-dot--warning" aria-hidden="true"></span>
+              <div>
+                <strong>Nessuna compilazione aperta</strong>
+                <span id="campaign-message">Al momento non è disponibile una campagna OFCN.</span>
+              </div>
+            </div>
+          </section>
 
-          <button id="logout-button" class="secondary-button" type="button">
-            Esci da questo dispositivo
-          </button>
+          <form id="response-form" class="response-form" hidden novalidate>
+            <div class="campaign-heading">
+              <div>
+                <p class="eyebrow">Campagna attiva</p>
+                <h2>Scheda operativa <span id="campaign-year"></span></h2>
+              </div>
+              <span id="draft-status" class="status-pill">Bozza locale</span>
+            </div>
+
+            <p class="section-help">
+              I dati restano nel browser fino all'invio. Compila almeno matricola,
+              cognome e nome; le altre sezioni sono facoltative.
+            </p>
+
+            <fieldset class="form-section">
+              <legend>1. Dati personali e ruolo</legend>
+              <div class="form-grid">
+                <div class="field-group">
+                  <label for="matricola">Matricola *</label>
+                  <input id="matricola" name="matricola" maxlength="50" autocomplete="off" required>
+                </div>
+                <div class="field-group">
+                  <label for="cognome">Cognome *</label>
+                  <input id="cognome" name="cognome" maxlength="100" autocomplete="family-name" required>
+                </div>
+                <div class="field-group">
+                  <label for="nome">Nome *</label>
+                  <input id="nome" name="nome" maxlength="100" autocomplete="given-name" required>
+                </div>
+                <div class="field-group">
+                  <label for="esperienza-ofcn">Esperienza OFCN (0–100)</label>
+                  <input id="esperienza-ofcn" name="esperienzaOfcn" type="number" min="0" max="100" inputmode="numeric">
+                </div>
+                <div class="field-group">
+                  <label for="ruolo-ofcn">Ruolo OFCN</label>
+                  <select id="ruolo-ofcn" name="ruoloOfcn">
+                    <option value="">Non indicato</option>
+                    <option value="COPILOTA">COPILOTA</option>
+                    <option value="CE">CE</option>
+                    <option value="CE INESPERTO">CE INESPERTO</option>
+                    <option value="DCL ESPERTO">DCL ESPERTO</option>
+                    <option value="DCL STANDARD">DCL STANDARD</option>
+                  </select>
+                </div>
+                <div class="field-group">
+                  <label for="buffer-giorni">Buffer generale (giorni)</label>
+                  <input id="buffer-giorni" name="bufferGiorni" type="number" min="0" max="365" inputmode="numeric">
+                </div>
+              </div>
+            </fieldset>
+
+            <details class="form-section">
+              <summary>2. Scadenze operative <span>facoltative</span></summary>
+              <div class="form-grid form-grid--dates">
+                <div class="field-group"><label for="scadenza-idoneita">Idoneità sanitaria</label><input id="scadenza-idoneita" type="date" data-scadenza="idoneitaSanitaria"></div>
+                <div class="field-group"><label for="scadenza-vaccini">Profilassi / vaccini</label><input id="scadenza-vaccini" type="date" data-scadenza="profilassiVaccini"></div>
+                <div class="field-group"><label for="scadenza-iccs">ICCS</label><input id="scadenza-iccs" type="date" data-scadenza="iccs"></div>
+                <div class="field-group"><label for="scadenza-fisici">Requisiti fisici</label><input id="scadenza-fisici" type="date" data-scadenza="requisitiFisici"></div>
+                <div class="field-group"><label for="scadenza-tiri">Tiri</label><input id="scadenza-tiri" type="date" data-scadenza="tiri"></div>
+                <div class="field-group"><label for="scadenza-ipdt">IPDT</label><input id="scadenza-ipdt" type="date" data-scadenza="ipdt"></div>
+                <div class="field-group"><label for="scadenza-slpp">SLPP</label><input id="scadenza-slpp" type="date" data-scadenza="slpp"></div>
+                <div class="field-group"><label for="scadenza-nos">NOS</label><input id="scadenza-nos" type="date" data-scadenza="nos"></div>
+                <div class="field-group"><label for="scadenza-altro">Altro</label><input id="scadenza-altro" type="date" data-scadenza="altro"></div>
+              </div>
+            </details>
+
+            <details class="form-section">
+              <summary>3. Indisponibilità personali <span id="unavailability-count">0 inserite</span></summary>
+              <p class="section-help">Aggiungi ogni periodo nel quale non puoi essere impiegato.</p>
+              <div class="form-grid">
+                <div class="field-group"><label for="unavailability-start">Data inizio</label><input id="unavailability-start" type="date"></div>
+                <div class="field-group"><label for="unavailability-end">Data fine</label><input id="unavailability-end" type="date"></div>
+                <div class="field-group"><label for="unavailability-reason">Motivo</label><input id="unavailability-reason" maxlength="200" placeholder="Es. licenza"></div>
+                <div class="field-group"><label for="unavailability-notes">Note</label><input id="unavailability-notes" maxlength="300"></div>
+              </div>
+              <button id="add-unavailability" class="secondary-button compact-button" type="button">Aggiungi periodo</button>
+              <div id="unavailability-list" class="record-list"></div>
+            </details>
+
+            <details class="form-section">
+              <summary>4. Corsi ed esercitazioni <span id="event-count">0 inseriti</span></summary>
+              <p class="section-help">Il buffer estende il periodo prima e dopo l'attività.</p>
+              <div class="form-grid">
+                <div class="field-group"><label for="event-type">Tipo</label><select id="event-type"><option value="CORSO">CORSO</option><option value="ESERCITAZIONE">ESERCITAZIONE</option></select></div>
+                <div class="field-group"><label for="event-start">Data inizio</label><input id="event-start" type="date"></div>
+                <div class="field-group"><label for="event-end">Data fine</label><input id="event-end" type="date"></div>
+                <div class="field-group"><label for="event-buffer">Buffer giorni</label><input id="event-buffer" type="number" min="0" max="365" value="20" inputmode="numeric"></div>
+                <div class="field-group"><label for="event-reason">Descrizione</label><input id="event-reason" maxlength="200"></div>
+                <div class="field-group"><label for="event-notes">Note</label><input id="event-notes" maxlength="300"></div>
+              </div>
+              <button id="add-event" class="secondary-button compact-button" type="button">Aggiungi attività</button>
+              <div id="event-list" class="record-list"></div>
+            </details>
+
+            <details class="form-section">
+              <summary>5. Preferenze e disponibilità <span>facoltative</span></summary>
+              <div class="preference-block">
+                <span class="field-label">Turni preferiti</span>
+                <div class="turn-grid" data-turn-group="preferred"></div>
+              </div>
+              <div class="preference-block">
+                <span class="field-label">Turni da evitare</span>
+                <div class="turn-grid" data-turn-group="avoid"></div>
+              </div>
+              <div class="form-grid form-grid--dates">
+                <div class="field-group"><label for="preferred-start">Periodo preferito: inizio</label><input id="preferred-start" type="date"></div>
+                <div class="field-group"><label for="preferred-end">Periodo preferito: fine</label><input id="preferred-end" type="date"></div>
+                <div class="field-group"><label for="avoid-start">Periodo da evitare: inizio</label><input id="avoid-start" type="date"></div>
+                <div class="field-group"><label for="avoid-end">Periodo da evitare: fine</label><input id="avoid-end" type="date"></div>
+                <div class="field-group"><label for="christmas-availability">Disponibilità Natale</label><select id="christmas-availability"><option value="">Non indicata</option><option value="DISPONIBILE">Disponibile</option><option value="NON_DISPONIBILE">Non disponibile</option><option value="PREFERISCE">Preferisce Natale</option></select></div>
+                <div class="field-group"><label for="summer-availability">Disponibilità Estate</label><select id="summer-availability"><option value="">Non indicata</option><option value="DISPONIBILE">Disponibile</option><option value="NON_DISPONIBILE">Non disponibile</option><option value="PREFERISCE">Preferisce Estate</option></select></div>
+              </div>
+              <div class="field-group"><label for="preference-notes">Note preferenze</label><textarea id="preference-notes" rows="3" maxlength="1000"></textarea></div>
+            </details>
+
+            <div class="field-group">
+              <label for="general-notes">Note generali</label>
+              <textarea id="general-notes" rows="4" maxlength="2000"></textarea>
+            </div>
+
+            <p id="response-message" class="form-message" role="status" aria-live="polite"></p>
+
+            <div class="form-actions">
+              <button id="download-button" class="secondary-button" type="button">Scarica bozza JSON</button>
+              <button id="submit-button" class="primary-button" type="submit">Invia scheda</button>
+            </div>
+          </form>
+
+          <div class="session-actions">
+            <p id="logout-message" class="form-message" role="status" aria-live="polite"></p>
+            <button id="logout-button" class="secondary-button" type="button">Esci da questo dispositivo</button>
+          </div>
         </section>
 
-        <p class="step-label">Step 2 · Accesso protetto</p>
+        <p class="step-label">Portale protetto · Scheda operativa OFCN</p>
       </section>
     </main>
 
@@ -108,5 +250,12 @@
       <span aria-hidden="true">·</span>
       <span id="current-year"></span>
     </footer>
+
+    <template id="record-template">
+      <article class="record-card">
+        <div class="record-card__text"></div>
+        <button class="remove-record" type="button" aria-label="Elimina elemento">Elimina</button>
+      </article>
+    </template>
   </body>
 </html>
