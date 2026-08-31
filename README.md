@@ -15,9 +15,11 @@ Sono previsti:
 - logout limitato al dispositivo corrente;
 - nessuna anagrafica preventiva del personale.
 
-Il form genera lo stesso JSON importabile dal software locale, consente il
-download della bozza e invia una copia immutabile a Supabase. Per il collaudo
-vanno utilizzati esclusivamente dati fittizi.
+Il form genera un JSON importabile dal software locale, invia una copia
+immutabile a Supabase e permette al compilatore di scaricare una copia PDF.
+Raccoglie soltanto matricola, cognome, nome, indisponibilità, ordine completo di
+priorità dei sei turni e note. Per il collaudo vanno utilizzati esclusivamente
+dati fittizi.
 
 Collaudi superati: login `PLAN_OFCN`, persistenza della sessione, logout locale e
 nuovo accesso.

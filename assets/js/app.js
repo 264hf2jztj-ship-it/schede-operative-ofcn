@@ -1,6 +1,7 @@
 "use strict";
 
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4/+esm";
+import { jsPDF } from "https://cdn.jsdelivr.net/npm/jspdf@4.2.0/+esm";
 import { LOGIN_ALIASES, SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "./config.js";
 
 const STORAGE_KEY = "aup_pianificazione_ofcn_scadenze_operative_v1";
@@ -31,9 +32,7 @@ const elements = {
   addUnavailability: document.querySelector("#add-unavailability"),
   unavailabilityList: document.querySelector("#unavailability-list"),
   unavailabilityCount: document.querySelector("#unavailability-count"),
-  addEvent: document.querySelector("#add-event"),
-  eventList: document.querySelector("#event-list"),
-  eventCount: document.querySelector("#event-count"),
+  priorityGrid: document.querySelector("#priority-grid"),
   recordTemplate: document.querySelector("#record-template"),
 };
 
@@ -49,7 +48,6 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
 let activeCampaign = null;
 let currentUserId = "";
 let unavailabilities = [];
-let operationalEvents = [];
 let sentPayload = null;
 let isSubmitting = false;
 
@@ -91,19 +89,17 @@ function updateSentState(isSent) {
     elements.draftStatus.classList.toggle("status-pill--sent", isSent);
   }
   if (elements.downloadButton) {
-    elements.downloadButton.textContent = isSent ? "Scarica copia inviata" : "Scarica bozza JSON";
+    elements.downloadButton.textContent = isSent ? "Scarica copia inviata PDF" : "Scarica bozza PDF";
   }
 }
 
 function resetOperationalState() {
   activeCampaign = null;
   unavailabilities = [];
-  operationalEvents = [];
   sentPayload = null;
   isSubmitting = false;
   elements.responseForm?.reset();
-  const eventBuffer = document.querySelector("#event-buffer");
-  if (eventBuffer) eventBuffer.value = "20";
+  refreshPriorityOptions();
   renderRecords();
   updateSentState(false);
 }
@@ -219,11 +215,6 @@ function textValue(selector, uppercase = false) {
   return uppercase ? value.toUpperCase() : value;
 }
 
-function optionalNumber(selector) {
-  const raw = textValue(selector);
-  return raw === "" ? null : Number(raw);
-}
-
 function datePair(startSelector, endSelector, label) {
   const dataInizio = textValue(startSelector);
   const dataFine = textValue(endSelector);
@@ -236,17 +227,16 @@ function datePair(startSelector, endSelector, label) {
   return { dataInizio, dataFine };
 }
 
-function checkedTurns(groupName) {
-  return Array.from(document.querySelectorAll(`[data-turn-group="${groupName}"] input:checked`))
-    .map((input) => Number(input.value));
-}
-
-function buildScadenze() {
-  const values = {};
-  document.querySelectorAll("[data-scadenza]").forEach((input) => {
-    if (input.value) values[input.dataset.scadenza] = input.value;
-  });
-  return values;
+function getPriorityOrder() {
+  const selectors = Array.from(document.querySelectorAll("[data-priority-position]"));
+  const order = selectors.map((select) => Number(select.value));
+  if (order.some((turn) => !Number.isInteger(turn) || turn < 1 || turn > TURN_COUNT)) {
+    throw new Error("Assegna un turno a ogni posizione di priorità.");
+  }
+  if (new Set(order).size !== TURN_COUNT) {
+    throw new Error("Ogni turno deve comparire una sola volta nell'ordine di priorità.");
+  }
+  return order;
 }
 
 function buildPayload() {
@@ -259,8 +249,10 @@ function buildPayload() {
   const cognome = textValue("#cognome", true);
   const nome = textValue("#nome", true);
   const anno = Number(activeCampaign.anno);
-  const periodoPreferito = datePair("#preferred-start", "#preferred-end", "il periodo preferito");
-  const periodoDaEvitare = datePair("#avoid-start", "#avoid-end", "il periodo da evitare");
+  const ordinePrioritaTurni = getPriorityOrder();
+  const punteggiPrioritaTurni = Object.fromEntries(
+    ordinePrioritaTurni.map((turno, index) => [`T${turno}`, TURN_COUNT - index]),
+  );
 
   const scheda = {
     matricola,
@@ -268,20 +260,22 @@ function buildPayload() {
     cognome,
     nome,
     anno,
-    esperienzaOfcn: optionalNumber("#esperienza-ofcn"),
-    ruoloOfcn: textValue("#ruolo-ofcn", true),
-    bufferGiorni: optionalNumber("#buffer-giorni"),
-    scadenze: buildScadenze(),
+    esperienzaOfcn: null,
+    ruoloOfcn: "",
+    bufferGiorni: null,
+    scadenze: {},
     indisponibilita: unavailabilities.map((item) => ({ ...item })),
-    eventiOperativi: operationalEvents.map((item) => ({ ...item })),
+    eventiOperativi: [],
     preferenze: {
-      turniPreferiti: checkedTurns("preferred"),
-      turniDaEvitare: checkedTurns("avoid"),
-      periodoPreferito,
-      periodoDaEvitare,
-      disponibilitaNatale: textValue("#christmas-availability", true),
-      disponibilitaEstate: textValue("#summer-availability", true),
-      note: textValue("#preference-notes"),
+      ordinePrioritaTurni,
+      punteggiPrioritaTurni,
+      turniPreferiti: ordinePrioritaTurni,
+      turniDaEvitare: [],
+      periodoPreferito: { dataInizio: "", dataFine: "" },
+      periodoDaEvitare: { dataInizio: "", dataFine: "" },
+      disponibilitaNatale: "",
+      disponibilitaEstate: "",
+      note: "",
     },
     lockManuali: [],
     note: textValue("#general-notes"),
@@ -306,31 +300,108 @@ function safeFilenamePart(value) {
     .slice(0, 50) || "SCHEDA";
 }
 
-function downloadPayload(payload) {
+function formatDateForPdf(value) {
+  const [year, month, day] = String(value || "").split("-");
+  return year && month && day ? `${day}/${month}/${year}` : String(value || "");
+}
+
+function downloadPayloadPdf(payload) {
   const year = payload.annoCorrente;
   const block = payload.schedeOperative[String(year)];
   const matricola = Object.keys(block)[0];
-  const cognome = block[matricola]?.cognome || "OFCN";
-  const filename = `scheda_ofcn_${year}_${safeFilenamePart(matricola)}_${safeFilenamePart(cognome)}.json`;
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  const scheda = block[matricola];
+  const cognome = scheda.cognome || "OFCN";
+  const filename = `scheda_ofcn_${year}_${safeFilenamePart(matricola)}_${safeFilenamePart(cognome)}.pdf`;
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const margin = 18;
+  const contentWidth = 174;
+  let y = 42;
+
+  function ensureSpace(height) {
+    if (y + height <= 278) return;
+    doc.addPage();
+    y = 22;
+  }
+
+  function sectionTitle(title) {
+    ensureSpace(12);
+    doc.setFillColor(232, 240, 248);
+    doc.roundedRect(margin, y, contentWidth, 8, 1.5, 1.5, "F");
+    doc.setTextColor(18, 53, 91);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text(title, margin + 3, y + 5.4);
+    y += 12;
+  }
+
+  function textRow(label, value) {
+    const lines = doc.splitTextToSize(`${label}: ${value || "-"}`, contentWidth);
+    ensureSpace(lines.length * 5 + 2);
+    doc.setTextColor(23, 35, 52);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text(lines, margin, y);
+    y += lines.length * 5 + 2;
+  }
+
+  doc.setFillColor(18, 53, 91);
+  doc.rect(0, 0, 210, 30, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  doc.text("Scheda operativa OFCN", margin, 14);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.text(`Campagna ${year} - copia per il compilatore`, margin, 22);
+
+  sectionTitle("Dati personali");
+  textRow("Matricola", scheda.matricola);
+  textRow("Cognome", scheda.cognome);
+  textRow("Nome", scheda.nome);
+
+  sectionTitle("Ordine di priorità dei turni");
+  const order = scheda.preferenze?.ordinePrioritaTurni || [];
+  order.forEach((turn, index) => {
+    const score = TURN_COUNT - index;
+    textRow(`${index + 1}a priorità`, `Turno ${turn} - ${score} ${score === 1 ? "punto" : "punti"}`);
+  });
+
+  sectionTitle("Indisponibilità personali");
+  if (!scheda.indisponibilita?.length) {
+    textRow("Periodi", "Nessuna indisponibilità inserita");
+  } else {
+    scheda.indisponibilita.forEach((item, index) => {
+      const periodo = `${formatDateForPdf(item.dataInizio)} - ${formatDateForPdf(item.dataFine)}`;
+      const dettaglio = [item.motivo, item.note].filter(Boolean).join(" - ");
+      textRow(`Periodo ${index + 1}`, dettaglio ? `${periodo} - ${dettaglio}` : periodo);
+    });
+  }
+
+  sectionTitle("Note generali");
+  textRow("Note", scheda.note || "Nessuna nota");
+
+  const pageCount = doc.getNumberOfPages();
+  for (let page = 1; page <= pageCount; page += 1) {
+    doc.setPage(page);
+    doc.setDrawColor(216, 225, 235);
+    doc.line(margin, 286, 192, 286);
+    doc.setTextColor(95, 111, 130);
+    doc.setFontSize(8);
+    doc.text(`Generato il ${new Date(payload.esportatoIl).toLocaleString("it-IT")}`, margin, 291);
+    doc.text(`Pagina ${page} di ${pageCount}`, 192, 291, { align: "right" });
+  }
+
+  doc.save(filename);
 }
 
 function handleDownload() {
   setMessage(elements.responseMessage);
   try {
     const payload = sentPayload || buildPayload();
-    downloadPayload(payload);
-    setMessage(elements.responseMessage, sentPayload ? "Copia della risposta inviata scaricata." : "Bozza JSON scaricata.", "success");
+    downloadPayloadPdf(payload);
+    setMessage(elements.responseMessage, sentPayload ? "Copia PDF della risposta inviata scaricata." : "Bozza PDF scaricata.", "success");
   } catch (error) {
-    setMessage(elements.responseMessage, error.message || "Impossibile creare il file JSON.", "error");
+    setMessage(elements.responseMessage, error.message || "Impossibile creare il file PDF.", "error");
   }
 }
 
@@ -361,7 +432,7 @@ async function handleSubmit(event) {
 
     sentPayload = JSON.parse(JSON.stringify(payload));
     updateSentState(true);
-    setMessage(elements.responseMessage, "Scheda inviata correttamente. Puoi scaricare la copia esatta appena trasmessa.", "success");
+    setMessage(elements.responseMessage, "Scheda inviata correttamente. Puoi scaricare una copia PDF dei contenuti trasmessi.", "success");
     elements.submitButton.textContent = "Invia una nuova versione";
   } catch (error) {
     const message = error?.code === "23505"
@@ -393,32 +464,7 @@ function addUnavailability() {
   }
 }
 
-function addOperationalEvent() {
-  setMessage(elements.responseMessage);
-  try {
-    const period = datePair("#event-start", "#event-end", "l'attività");
-    if (!period.dataInizio) throw new Error("Inserisci le date del corso o dell'esercitazione.");
-    const bufferGiorni = optionalNumber("#event-buffer");
-    if (bufferGiorni === null || bufferGiorni < 0 || bufferGiorni > 365) {
-      throw new Error("Inserisci un buffer compreso tra 0 e 365 giorni.");
-    }
-    operationalEvents.push({
-      tipo: textValue("#event-type", true),
-      ...period,
-      bufferGiorni,
-      motivo: textValue("#event-reason"),
-      note: textValue("#event-notes"),
-    });
-    ["#event-start", "#event-end", "#event-reason", "#event-notes"]
-      .forEach((selector) => { document.querySelector(selector).value = ""; });
-    document.querySelector("#event-buffer").value = "20";
-    renderRecords();
-  } catch (error) {
-    setMessage(elements.responseMessage, error.message, "error");
-  }
-}
-
-function appendRecord(container, text, detail, index, type) {
+function appendRecord(container, text, detail, index) {
   const fragment = elements.recordTemplate.content.cloneNode(true);
   const card = fragment.querySelector(".record-card");
   const textBox = fragment.querySelector(".record-card__text");
@@ -428,8 +474,7 @@ function appendRecord(container, text, detail, index, type) {
   small.textContent = detail;
   textBox.append(main, small);
   card.querySelector(".remove-record").addEventListener("click", () => {
-    if (type === "unavailability") unavailabilities.splice(index, 1);
-    if (type === "event") operationalEvents.splice(index, 1);
+    unavailabilities.splice(index, 1);
     renderRecords();
   });
   container.appendChild(fragment);
@@ -444,54 +489,71 @@ function renderRecords() {
         `${item.dataInizio} → ${item.dataFine}`,
         [item.motivo, item.note].filter(Boolean).join(" · ") || "Nessuna nota",
         index,
-        "unavailability",
-      );
-    });
-  }
-  if (elements.eventList) {
-    elements.eventList.replaceChildren();
-    operationalEvents.forEach((item, index) => {
-      appendRecord(
-        elements.eventList,
-        `${item.tipo}: ${item.dataInizio} → ${item.dataFine}`,
-        `Buffer ${item.bufferGiorni} giorni${item.motivo ? ` · ${item.motivo}` : ""}`,
-        index,
-        "event",
       );
     });
   }
   if (elements.unavailabilityCount) elements.unavailabilityCount.textContent = `${unavailabilities.length} inserite`;
-  if (elements.eventCount) elements.eventCount.textContent = `${operationalEvents.length} inseriti`;
 }
 
-function initializeTurnOptions() {
-  document.querySelectorAll("[data-turn-group]").forEach((container) => {
-    const group = container.dataset.turnGroup;
-    for (let turn = 1; turn <= TURN_COUNT; turn += 1) {
-      const label = document.createElement("label");
-      label.className = "turn-option";
-      const checkbox = document.createElement("input");
-      checkbox.type = "checkbox";
-      checkbox.value = String(turn);
-      checkbox.name = `${group}-turn-${turn}`;
-      const text = document.createElement("span");
-      text.textContent = `Turno ${turn}`;
-      label.append(checkbox, text);
-      container.appendChild(label);
-    }
+function refreshPriorityOptions() {
+  const selectors = Array.from(document.querySelectorAll("[data-priority-position]"));
+  const selectedTurns = new Set(selectors.map((select) => select.value).filter(Boolean));
+
+  selectors.forEach((select) => {
+    Array.from(select.options).forEach((option) => {
+      if (!option.value) return;
+      option.disabled = option.value !== select.value && selectedTurns.has(option.value);
+    });
   });
+}
+
+function initializePrioritySelectors() {
+  if (!elements.priorityGrid) return;
+  elements.priorityGrid.replaceChildren();
+
+  for (let position = 1; position <= TURN_COUNT; position += 1) {
+    const wrapper = document.createElement("div");
+    wrapper.className = "field-group priority-field";
+
+    const label = document.createElement("label");
+    const select = document.createElement("select");
+    const score = TURN_COUNT - position + 1;
+    const selectId = `priority-${position}`;
+
+    label.htmlFor = selectId;
+    label.textContent = `${position}ª priorità · ${score} ${score === 1 ? "punto" : "punti"}`;
+    select.id = selectId;
+    select.name = selectId;
+    select.dataset.priorityPosition = String(position);
+    select.required = true;
+
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = "Seleziona un turno";
+    select.appendChild(placeholder);
+
+    for (let turn = 1; turn <= TURN_COUNT; turn += 1) {
+      const option = document.createElement("option");
+      option.value = String(turn);
+      option.textContent = `Turno ${turn}`;
+      select.appendChild(option);
+    }
+
+    select.addEventListener("change", refreshPriorityOptions);
+    wrapper.append(label, select);
+    elements.priorityGrid.appendChild(wrapper);
+  }
 }
 
 async function initialize() {
   if (elements.currentYear) elements.currentYear.textContent = String(new Date().getFullYear());
-  initializeTurnOptions();
+  initializePrioritySelectors();
   renderRecords();
   elements.loginForm?.addEventListener("submit", handleLogin);
   elements.logoutButton?.addEventListener("click", handleLogout);
   elements.responseForm?.addEventListener("submit", handleSubmit);
   elements.downloadButton?.addEventListener("click", handleDownload);
   elements.addUnavailability?.addEventListener("click", addUnavailability);
-  elements.addEvent?.addEventListener("click", addOperationalEvent);
   supabase.auth.onAuthStateChange((_event, session) => renderSession(session));
 
   try {

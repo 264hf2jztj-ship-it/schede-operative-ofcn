@@ -160,6 +160,11 @@ declare
     blocco_anno jsonb;
     scheda jsonb;
     matricola_chiave text;
+    priorita jsonb;
+    punteggi jsonb;
+    punteggio_testo text;
+    posizione integer;
+    turno integer;
 begin
     if (select auth.uid()) is null or new.inviato_da <> (select auth.uid()) then
         raise exception 'Identità di invio non valida';
@@ -227,10 +232,52 @@ begin
        or btrim(coalesce(scheda ->> 'matricola', '')) <> btrim(matricola_chiave)
        or coalesce(scheda ->> 'anno', '') !~ '^[0-9]{4}$'
        or (scheda ->> 'anno')::smallint <> new.anno
-       or nullif(btrim(scheda ->> 'nominativo'), '') is null
-       or length(scheda ->> 'nominativo') > 200 then
+       or nullif(btrim(scheda ->> 'cognome'), '') is null
+       or length(scheda ->> 'cognome') > 100
+       or nullif(btrim(scheda ->> 'nome'), '') is null
+       or length(scheda ->> 'nome') > 100
+       or btrim(coalesce(scheda ->> 'nominativo', ''))
+          <> btrim(concat_ws(' ', scheda ->> 'cognome', scheda ->> 'nome')) then
         raise exception 'Identità o anno della scheda non validi';
     end if;
+
+    priorita := scheda #> '{preferenze,ordinePrioritaTurni}';
+    punteggi := scheda #> '{preferenze,punteggiPrioritaTurni}';
+
+    if jsonb_typeof(priorita) <> 'array'
+       or jsonb_array_length(priorita) <> 6 then
+        raise exception 'L''ordine di priorità deve contenere sei turni';
+    end if;
+
+    if exists (
+           select 1
+             from jsonb_array_elements_text(priorita) elemento(valore)
+            where elemento.valore !~ '^[1-6]$'
+       )
+       or (
+           select count(distinct elemento.valore)
+             from jsonb_array_elements_text(priorita) elemento(valore)
+       ) <> 6 then
+        raise exception 'Ogni turno da 1 a 6 deve comparire una sola volta';
+    end if;
+
+    if jsonb_typeof(punteggi) <> 'object'
+       or (
+           select count(*)
+             from jsonb_object_keys(punteggi)
+       ) <> 6 then
+        raise exception 'Punteggi di priorità non validi';
+    end if;
+
+    for posizione in 0..5 loop
+        turno := (priorita ->> posizione)::integer;
+        punteggio_testo := punteggi ->> ('T' || turno::text);
+
+        if coalesce(punteggio_testo, '') !~ '^[1-6]$'
+           or punteggio_testo::integer <> 6 - posizione then
+            raise exception 'Punteggio non coerente per il turno %', turno;
+        end if;
+    end loop;
 
     return new;
 end;
