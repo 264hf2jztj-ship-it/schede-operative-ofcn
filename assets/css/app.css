@@ -8,6 +8,7 @@
   --muted: #5f6f82;
   --border: #d8e1eb;
   --success: #217a4d;
+  --warning: #9a6500;
   --danger: #a83232;
   --shadow: 0 18px 50px rgba(18, 53, 91, 0.14);
 }
@@ -36,7 +37,7 @@ body {
 }
 
 .page-shell {
-  width: min(100% - 2rem, 48rem);
+  width: min(100% - 2rem, 64rem);
   margin: auto;
   padding: 3rem 0;
 }
@@ -125,6 +126,16 @@ h2 {
   background: #edf8f2;
 }
 
+.notice--warning {
+  border-color: rgba(154, 101, 0, 0.26);
+  background: #fff8e8;
+}
+
+.notice-dot--warning {
+  background: var(--warning);
+  box-shadow: 0 0 0 0.3rem rgba(154, 101, 0, 0.12);
+}
+
 .notice strong,
 .notice span {
   display: block;
@@ -147,6 +158,10 @@ h2 {
   background: var(--primary);
   font: inherit;
   font-weight: 750;
+}
+
+button {
+  cursor: pointer;
 }
 
 .secondary-button {
@@ -186,7 +201,9 @@ h2 {
   font-weight: 700;
 }
 
-.field-group input {
+.field-group input,
+.field-group select,
+.field-group textarea {
   width: 100%;
   min-height: 3.15rem;
   padding: 0.75rem 0.85rem;
@@ -197,11 +214,198 @@ h2 {
   font: inherit;
 }
 
+.field-group textarea {
+  min-height: 6rem;
+  resize: vertical;
+}
+
 .field-group input:focus-visible,
+.field-group select:focus-visible,
+.field-group textarea:focus-visible,
 .primary-button:focus-visible,
-.secondary-button:focus-visible {
+.secondary-button:focus-visible,
+.remove-record:focus-visible {
   outline: 3px solid rgba(53, 112, 166, 0.3);
   outline-offset: 2px;
+}
+
+.campaign-state[hidden],
+.response-form[hidden] {
+  display: none;
+}
+
+.campaign-heading {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin: 2rem 0 0.5rem;
+}
+
+.campaign-heading h2 {
+  margin-top: 0.25rem;
+}
+
+.status-pill {
+  flex: 0 0 auto;
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+  color: var(--primary);
+  background: var(--primary-soft);
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.status-pill--sent {
+  color: var(--success);
+  background: #e8f6ee;
+}
+
+.response-form {
+  margin-top: 1.5rem;
+}
+
+.form-section {
+  min-width: 0;
+  margin: 1rem 0;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: #fbfdff;
+}
+
+fieldset.form-section {
+  padding-top: 0.75rem;
+}
+
+.form-section legend,
+.form-section summary {
+  color: var(--primary);
+  font-size: 1rem;
+  font-weight: 780;
+}
+
+.form-section summary {
+  cursor: pointer;
+}
+
+.form-section summary span {
+  margin-left: 0.35rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+
+details.form-section[open] summary {
+  margin-bottom: 1rem;
+}
+
+.section-help {
+  margin: 0.5rem 0 1rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 1rem;
+}
+
+.form-grid--dates {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.compact-button {
+  width: auto;
+  min-height: 2.75rem;
+  margin: 0;
+}
+
+.record-list {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 1rem;
+}
+
+.record-card {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: #ffffff;
+}
+
+.record-card__text {
+  min-width: 0;
+  color: var(--text);
+  font-size: 0.88rem;
+  overflow-wrap: anywhere;
+}
+
+.record-card__text small {
+  display: block;
+  margin-top: 0.15rem;
+  color: var(--muted);
+}
+
+.remove-record {
+  flex: 0 0 auto;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid rgba(168, 50, 50, 0.28);
+  border-radius: 0.6rem;
+  color: var(--danger);
+  background: #fff;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.preference-block {
+  margin-bottom: 1rem;
+}
+
+.field-label {
+  display: block;
+  margin-bottom: 0.45rem;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.turn-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.turn-option {
+  display: flex;
+  gap: 0.45rem;
+  align-items: center;
+  padding: 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 0.65rem;
+  background: #fff;
+  font-size: 0.86rem;
+}
+
+.form-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.form-actions .secondary-button {
+  margin: 0;
+}
+
+.session-actions {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
 }
 
 .form-message {
@@ -253,6 +457,29 @@ footer {
 
   .status-card {
     border-radius: 1.1rem;
+  }
+
+  .form-grid,
+  .form-grid--dates,
+  .form-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .turn-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .campaign-heading {
+    display: block;
+  }
+
+  .status-pill {
+    display: inline-block;
+    margin-bottom: 0.75rem;
+  }
+
+  .record-card {
+    align-items: flex-start;
   }
 }
 
