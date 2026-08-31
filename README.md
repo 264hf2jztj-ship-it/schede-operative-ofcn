@@ -4,8 +4,8 @@ Portale web separato dal software **Automazione Ufficio Piani**.
 
 ## Stato
 
-Step 3 completato: autenticazione, schema Supabase, validazione server-side,
-privilegi minimi e Row Level Security sono attivi e collaudati.
+Step 3 completato. Il form operativo collegato a Supabase è pubblicato ed è in
+collaudo con la campagna 2027 temporaneamente aperta.
 
 Sono previsti:
 
@@ -15,8 +15,9 @@ Sono previsti:
 - logout limitato al dispositivo corrente;
 - nessuna anagrafica preventiva del personale.
 
-Il form operativo non è ancora attivo. Le tabelle sono pronte, ma non è stata
-ancora aperta alcuna campagna reale e non sono presenti risposte.
+Il form genera lo stesso JSON importabile dal software locale, consente il
+download della bozza e invia una copia immutabile a Supabase. Per il collaudo
+vanno utilizzati esclusivamente dati fittizi.
 
 Collaudi superati: login `PLAN_OFCN`, persistenza della sessione, logout locale e
 nuovo accesso.
@@ -36,6 +37,7 @@ assets/
 docs/
   STEP_2_SUPABASE.md
   STEP_3_DATABASE.md
+  STEP_4_FORM.md
 sql/
   001_schema_sicurezza.sql
 ```
