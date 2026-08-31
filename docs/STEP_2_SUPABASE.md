@@ -34,11 +34,13 @@ password. Non inserire password nel repository, nei file di configurazione o nel
 conversazioni. Il ruolo amministratore verrà assegnato nel database in uno step
 successivo.
 
-## Collaudo prima della pubblicazione
+## Collaudo completato
 
-- login corretto da smartphone;
-- errore generico con password errata;
-- persistenza della sessione dopo ricarica pagina;
-- due sessioni contemporanee su dispositivi diversi;
-- logout da un dispositivo senza interrompere l'altro;
-- tentativo di registrazione pubblica respinto.
+- [x] login corretto da smartphone;
+- [x] persistenza della sessione dopo ricarica pagina;
+- [x] logout locale;
+- [x] nuovo accesso dopo il logout;
+- [x] registrazioni pubbliche disattivate;
+- [x] accessi anonimi disattivati;
+- [ ] sessioni contemporanee su due dispositivi, da ricontrollare prima della
+  distribuzione generale.
