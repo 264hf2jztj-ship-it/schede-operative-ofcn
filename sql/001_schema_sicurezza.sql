@@ -73,6 +73,10 @@ create table public.risposte (
     )
 );
 
+create unique index campagne_una_sola_aperta_idx
+    on public.campagne (aperta)
+    where aperta;
+
 create index risposte_anno_stato_ricevuto_idx
     on public.risposte (anno, stato, ricevuto_il desc);
 
