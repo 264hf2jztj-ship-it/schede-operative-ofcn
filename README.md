@@ -4,13 +4,20 @@ Portale web separato dal software **Automazione Ufficio Piani**.
 
 ## Stato
 
-Step 1: struttura statica responsive pronta per la pubblicazione tramite GitHub Pages.
+Step 2 in corso: progetto Supabase creato e frontend di autenticazione predisposto.
 
-In questa fase:
+Sono previsti:
 
-- non è presente alcun collegamento a Supabase;
-- non vengono richiesti o memorizzati dati personali;
-- il pulsante di accesso è intenzionalmente disabilitato.
+- un account condiviso per il personale;
+- un account amministratore separato;
+- sessioni contemporanee indipendenti;
+- logout limitato al dispositivo corrente;
+- nessuna anagrafica preventiva del personale.
+
+Il form operativo e le tabelle delle risposte non sono ancora attivi.
+
+Il personale accederà con il nome utente `PLAN_OFCN`. Il frontend lo associa
+all'identificativo email tecnico richiesto internamente da Supabase Auth.
 
 ## Struttura
 
@@ -18,9 +25,17 @@ In questa fase:
 index.html
 assets/
   css/app.css
-  js/app.js
+  js/
+    app.js
+    config.js
+docs/
+  STEP_2_SUPABASE.md
 ```
 
-## Pubblicazione GitHub Pages
+La chiave pubblicabile Supabase presente in `config.js` è destinata al browser.
+Chiavi `service_role`, `sb_secret_...`, password e credenziali personali non devono
+mai essere inserite nel repository.
 
-Il progetto è progettato per essere pubblicato dalla radice del branch `main`.
+## Pubblicazione
+
+GitHub Pages pubblica la radice del branch `main` tramite GitHub Actions.
