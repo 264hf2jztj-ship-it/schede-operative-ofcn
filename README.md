@@ -4,7 +4,8 @@ Portale web separato dal software **Automazione Ufficio Piani**.
 
 ## Stato
 
-Step 2 in corso: progetto Supabase creato e frontend di autenticazione predisposto.
+Step 2 completato: progetto Supabase configurato e autenticazione pubblicata e
+collaudata da smartphone.
 
 Sono previsti:
 
@@ -15,6 +16,9 @@ Sono previsti:
 - nessuna anagrafica preventiva del personale.
 
 Il form operativo e le tabelle delle risposte non sono ancora attivi.
+
+Collaudi superati: login `PLAN_OFCN`, persistenza della sessione, logout locale e
+nuovo accesso.
 
 Il personale accederà con il nome utente `PLAN_OFCN`. Il frontend lo associa
 all'identificativo email tecnico richiesto internamente da Supabase Auth.
