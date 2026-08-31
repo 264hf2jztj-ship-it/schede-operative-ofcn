@@ -4,8 +4,8 @@ Portale web separato dal software **Automazione Ufficio Piani**.
 
 ## Stato
 
-Step 2 completato: progetto Supabase configurato e autenticazione pubblicata e
-collaudata da smartphone.
+Step 3 completato: autenticazione, schema Supabase, validazione server-side,
+privilegi minimi e Row Level Security sono attivi e collaudati.
 
 Sono previsti:
 
@@ -15,7 +15,8 @@ Sono previsti:
 - logout limitato al dispositivo corrente;
 - nessuna anagrafica preventiva del personale.
 
-Il form operativo e le tabelle delle risposte non sono ancora attivi.
+Il form operativo non è ancora attivo. Le tabelle sono pronte, ma non è stata
+ancora aperta alcuna campagna reale e non sono presenti risposte.
 
 Collaudi superati: login `PLAN_OFCN`, persistenza della sessione, logout locale e
 nuovo accesso.
@@ -34,6 +35,9 @@ assets/
     config.js
 docs/
   STEP_2_SUPABASE.md
+  STEP_3_DATABASE.md
+sql/
+  001_schema_sicurezza.sql
 ```
 
 La chiave pubblicabile Supabase presente in `config.js` è destinata al browser.
