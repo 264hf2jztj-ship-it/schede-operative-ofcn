@@ -4,10 +4,15 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
+    <meta name="referrer" content="no-referrer">
     <meta name="theme-color" content="#12355b">
-    <title>Scheda operativa OFCN</title>
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self'; img-src 'self' data:; connect-src 'self' https://zwevsjvvuycbkqddwiky.supabase.co; base-uri 'none'; form-action 'self'; object-src 'none'; upgrade-insecure-requests"
+    >
+    <title>Accesso · Scheda operativa OFCN</title>
     <link rel="stylesheet" href="assets/css/app.css">
-    <script src="assets/js/app.js" defer></script>
+    <script type="module" src="assets/js/app.js"></script>
   </head>
   <body>
     <main class="page-shell">
@@ -18,23 +23,83 @@
         <h1 id="page-title">Scheda operativa OFCN</h1>
 
         <p class="intro">
-          Il nuovo portale è stato predisposto correttamente. L'accesso protetto
-          e il modulo di compilazione verranno attivati nei prossimi step.
+          Accedi con le credenziali fornite dall'Ufficio Piani. Ogni dispositivo
+          mantiene una sessione indipendente.
         </p>
 
-        <div class="notice" role="status">
-          <span class="notice-dot" aria-hidden="true"></span>
-          <div>
-            <strong>Pagina di collaudo</strong>
-            <span>Nessuna raccolta dati è attualmente attiva.</span>
+        <section id="loading-view" class="auth-view" aria-live="polite">
+          <div class="notice">
+            <span class="notice-dot notice-dot--loading" aria-hidden="true"></span>
+            <div>
+              <strong>Verifica della sessione</strong>
+              <span>Attendi qualche istante.</span>
+            </div>
           </div>
-        </div>
+        </section>
 
-        <button class="primary-button" type="button" disabled>
-          Accesso non ancora disponibile
-        </button>
+        <section id="login-view" class="auth-view" hidden aria-labelledby="login-title">
+          <h2 id="login-title">Accesso personale</h2>
 
-        <p class="step-label">Step 1 · Struttura e pubblicazione</p>
+          <form id="login-form" novalidate>
+            <div class="field-group">
+              <label for="username">Nome utente</label>
+              <input
+                id="username"
+                name="username"
+                type="text"
+                autocomplete="username"
+                autocapitalize="none"
+                spellcheck="false"
+                required
+              >
+            </div>
+
+            <div class="field-group">
+              <label for="password">Password</label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                autocomplete="current-password"
+                required
+              >
+            </div>
+
+            <p id="login-message" class="form-message" role="status" aria-live="polite"></p>
+
+            <button id="login-button" class="primary-button" type="submit">
+              Accedi
+            </button>
+          </form>
+
+          <p class="security-note">
+            Non salvare le credenziali su dispositivi condivisi. Il portale non
+            consente la registrazione di nuovi account.
+          </p>
+        </section>
+
+        <section id="authenticated-view" class="auth-view" hidden aria-labelledby="authenticated-title">
+          <div class="notice notice--success" role="status">
+            <span class="notice-dot" aria-hidden="true"></span>
+            <div>
+              <strong id="authenticated-title">Accesso effettuato</strong>
+              <span id="session-label">Sessione protetta attiva.</span>
+            </div>
+          </div>
+
+          <p class="intro intro--compact">
+            Il collegamento con Supabase funziona. Il modulo di compilazione
+            verrà attivato nel prossimo step.
+          </p>
+
+          <p id="logout-message" class="form-message" role="status" aria-live="polite"></p>
+
+          <button id="logout-button" class="secondary-button" type="button">
+            Esci da questo dispositivo
+          </button>
+        </section>
+
+        <p class="step-label">Step 2 · Accesso protetto</p>
       </section>
     </main>
 
