@@ -368,10 +368,11 @@ function saveDraftForPdfRecovery(snapshot) {
   pdfRecoveryCleanupTimer = window.setTimeout(() => {
     clearPdfRecoveryStorage();
     pdfRecoveryCleanupTimer = null;
-  }, 30000);
+  }, 120000);
 }
 
 function restorePendingPdfDraft() {
+  if (!activeCampaign) return;
   let snapshot = null;
   try {
     const stored = window.sessionStorage.getItem(PDF_DRAFT_RECOVERY_KEY);
@@ -386,7 +387,7 @@ function restorePendingPdfDraft() {
   applyDraftSnapshot(snapshot);
 }
 
-function downloadPayloadPdf(payload) {
+async function downloadPayloadPdf(payload) {
   const year = payload.annoCorrente;
   const block = payload.schedeOperative[String(year)];
   const matricola = Object.keys(block)[0];
@@ -472,22 +473,74 @@ function downloadPayloadPdf(payload) {
     doc.text(`Pagina ${page} di ${pageCount}`, 192, 291, { align: "right" });
   }
 
-  doc.save(filename);
+  const pdfBlob = doc.output("blob");
+  let pdfFile = null;
+  let canShareFile = false;
+
+  try {
+    if (typeof File === "function") {
+      pdfFile = new File([pdfBlob], filename, { type: "application/pdf" });
+      canShareFile = typeof navigator.share === "function"
+        && typeof navigator.canShare === "function"
+        && navigator.canShare({ files: [pdfFile] });
+    }
+  } catch {
+    canShareFile = false;
+  }
+
+  if (canShareFile) {
+    await navigator.share({
+      files: [pdfFile],
+      title: `Scheda operativa OFCN ${year}`,
+    });
+    return "shared";
+  }
+
+  const objectUrl = URL.createObjectURL(pdfBlob);
+  const link = document.createElement("a");
+  link.href = objectUrl;
+  link.download = filename;
+  link.rel = "noopener";
+  link.hidden = true;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
+  return "downloaded";
 }
 
-function handleDownload(event) {
+async function handleDownload(event) {
   event?.preventDefault();
   event?.stopPropagation();
   setMessage(elements.responseMessage);
+  let draftSnapshot = null;
+
   try {
     const payload = sentPayload || buildPayload();
-    const draftSnapshot = createDraftSnapshot();
+    draftSnapshot = createDraftSnapshot();
     saveDraftForPdfRecovery(draftSnapshot);
-    downloadPayloadPdf(payload);
-    applyDraftSnapshot(draftSnapshot);
-    setMessage(elements.responseMessage, sentPayload ? "Copia PDF della risposta inviata scaricata." : "Bozza PDF scaricata.", "success");
+    elements.downloadButton.disabled = true;
+    elements.downloadButton.textContent = "Preparazione PDF…";
+    const deliveryMethod = await downloadPayloadPdf(payload);
+    const successMessage = deliveryMethod === "shared"
+      ? "PDF creato. Scegli dove salvarlo dal pannello del dispositivo."
+      : sentPayload
+        ? "Copia PDF della risposta inviata scaricata."
+        : "Bozza PDF scaricata.";
+    setMessage(elements.responseMessage, successMessage, "success");
   } catch (error) {
-    setMessage(elements.responseMessage, error.message || "Impossibile creare il file PDF.", "error");
+    if (error?.name === "AbortError") {
+      setMessage(elements.responseMessage, "Salvataggio PDF annullato.");
+    } else {
+      setMessage(elements.responseMessage, error.message || "Impossibile creare il file PDF.", "error");
+    }
+  } finally {
+    if (draftSnapshot) {
+      applyDraftSnapshot(draftSnapshot);
+      window.setTimeout(() => applyDraftSnapshot(draftSnapshot), 250);
+    }
+    elements.downloadButton.disabled = false;
+    updateSentState(Boolean(sentPayload));
   }
 }
 
@@ -640,6 +693,9 @@ async function initialize() {
   elements.responseForm?.addEventListener("submit", handleSubmit);
   elements.downloadButton?.addEventListener("click", handleDownload);
   elements.addUnavailability?.addEventListener("click", addUnavailability);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") restorePendingPdfDraft();
+  });
   supabase.auth.onAuthStateChange((_event, session) => renderSession(session));
 
   try {
