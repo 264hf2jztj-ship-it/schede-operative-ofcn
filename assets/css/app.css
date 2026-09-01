@@ -207,6 +207,55 @@ button {
   line-height: 1.4;
 }
 
+.unit-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.unit-option {
+  display: flex;
+  gap: 0.7rem;
+  align-items: center;
+  min-height: 4rem;
+  padding: 0.9rem 1rem;
+  border: 2px solid transparent;
+  border-radius: 0.9rem;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.unit-option input {
+  width: 1.15rem;
+  height: 1.15rem;
+  margin: 0;
+}
+
+.unit-option--second {
+  border-color: #b52525;
+  color: #8e1818;
+  background: #fff0f0;
+}
+
+.unit-option--second input {
+  accent-color: #b52525;
+}
+
+.unit-option--fiftieth {
+  border-color: #d8a800;
+  color: #6d5600;
+  background: #fff8cf;
+}
+
+.unit-option--fiftieth input {
+  accent-color: #d8a800;
+}
+
+.unit-option:has(input:checked) {
+  box-shadow: 0 0 0 3px rgba(18, 53, 91, 0.16);
+}
+
 .field-group input,
 .field-group select,
 .field-group textarea {
@@ -496,6 +545,7 @@ footer {
   .form-grid--dates,
   .priority-grid,
   .avoid-grid,
+  .unit-choice-grid,
   .form-actions {
     grid-template-columns: 1fr;
   }
