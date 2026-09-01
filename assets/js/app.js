@@ -489,6 +489,7 @@ function renderAdminResponses() {
     const status = fragment.querySelector(".admin-response-status");
     const detail = fragment.querySelector(".admin-response-detail");
     const downloadButton = fragment.querySelector(".download-response");
+    const deleteButton = fragment.querySelector(".delete-response");
     const stateSelect = fragment.querySelector(".admin-response-state");
     const sheet = getResponseSheet(response);
     const preferences = sheet?.preferenze ?? {};
@@ -534,6 +535,7 @@ function renderAdminResponses() {
       downloadJson(response.risposta_json, getResponseFilename(response));
       setMessage(elements.adminMessage, "JSON originale della scheda scaricato.", "success");
     });
+    deleteButton.addEventListener("click", () => deleteAdminResponse(response, deleteButton));
     stateSelect.addEventListener("change", () => updateAdminResponseStatus(response, stateSelect));
     elements.adminList.appendChild(fragment);
   });
@@ -599,6 +601,44 @@ async function updateAdminResponseStatus(response, select) {
     setMessage(elements.adminMessage, "Aggiornamento non riuscito. La scheda non è stata modificata.", "error");
   } finally {
     select.disabled = false;
+  }
+}
+
+async function deleteAdminResponse(response, button) {
+  const sheet = getResponseSheet(response);
+  const identity = [sheet?.matricola, sheet?.cognome, sheet?.nome].filter(Boolean).join(" · ");
+  const confirmed = window.confirm(
+    `Eliminare definitivamente la scheda${identity ? ` di ${identity}` : " selezionata"}?\n\n` +
+    "Questa operazione non può essere annullata.",
+  );
+  if (!confirmed) return;
+
+  button.disabled = true;
+  button.textContent = "Eliminazione…";
+  setMessage(elements.adminMessage);
+
+  try {
+    const { data, error } = await supabase
+      .from("risposte")
+      .delete()
+      .eq("id", response.id)
+      .eq("reparto_destinatario", currentAdminUnit)
+      .select("id")
+      .single();
+    if (error || data?.id !== response.id) throw error || new Error("Scheda non eliminata");
+
+    adminResponses = adminResponses.filter((item) => item.id !== response.id);
+    selectedAdminResponseIds.delete(response.id);
+    renderAdminResponses();
+    setMessage(elements.adminMessage, "Scheda eliminata definitivamente.", "success");
+  } catch {
+    button.disabled = false;
+    button.textContent = "Elimina scheda";
+    setMessage(
+      elements.adminMessage,
+      "Eliminazione non riuscita. La scheda è ancora presente: aggiorna l'elenco e riprova.",
+      "error",
+    );
   }
 }
 
