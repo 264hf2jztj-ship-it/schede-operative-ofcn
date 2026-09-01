@@ -259,6 +259,7 @@ function buildPayload() {
   const matricola = textValue("#matricola", true);
   const cognome = textValue("#cognome", true);
   const nome = textValue("#nome", true);
+  const repartoDestinatario = document.querySelector('input[name="recipient-unit"]:checked')?.value ?? "";
   const anno = Number(activeCampaign.anno);
   const ordinePrioritaTurni = getPriorityOrder();
   const turniDaEvitare = getAvoidedTurns();
@@ -276,6 +277,9 @@ function buildPayload() {
     cognome,
     nome,
     anno,
+    repartoDestinatario,
+    corsiQualificheDesiderati: textValue("#desired-training"),
+    esercitazioniDesiderate: textValue("#desired-exercises"),
     esperienzaOfcn: null,
     ruoloOfcn: "",
     bufferGiorni: null,
@@ -303,6 +307,7 @@ function buildPayload() {
     versione: Number(activeCampaign.versione_payload || 1),
     esportatoIl: new Date().toISOString(),
     annoCorrente: anno,
+    repartoDestinatario,
     storageKey: STORAGE_KEY,
     schedeOperative: { [String(anno)]: { [matricola]: scheda } },
   };
@@ -328,6 +333,12 @@ function formatAvailabilityForPdf(value) {
   return "Non indicata";
 }
 
+function formatRecipientUnit(value) {
+  if (value === "2_GRUPPO") return "2° Gruppo";
+  if (value === "50_GRUPPO") return "50° Gruppo";
+  return "Non indicato";
+}
+
 function createDraftSnapshot() {
   return {
     savedAt: Date.now(),
@@ -336,6 +347,9 @@ function createDraftSnapshot() {
     cognome: textValue("#cognome"),
     nome: textValue("#nome"),
     note: textValue("#general-notes"),
+    recipientUnit: document.querySelector('input[name="recipient-unit"]:checked')?.value ?? "",
+    desiredTraining: textValue("#desired-training"),
+    desiredExercises: textValue("#desired-exercises"),
     priorityOrder: Array.from(document.querySelectorAll("[data-priority-position]"))
       .map((select) => select.value),
     avoidedTurns: getAvoidedTurns(),
@@ -354,10 +368,16 @@ function applyDraftSnapshot(snapshot) {
     "#cognome": snapshot.cognome,
     "#nome": snapshot.nome,
     "#general-notes": snapshot.note,
+    "#desired-training": snapshot.desiredTraining,
+    "#desired-exercises": snapshot.desiredExercises,
   };
   Object.entries(values).forEach(([selector, value]) => {
     const field = document.querySelector(selector);
     if (field) field.value = String(value || "");
+  });
+
+  document.querySelectorAll('input[name="recipient-unit"]').forEach((radio) => {
+    radio.checked = radio.value === snapshot.recipientUnit;
   });
 
   const selectors = Array.from(document.querySelectorAll("[data-priority-position]"));
@@ -476,6 +496,7 @@ async function downloadPayloadPdf(payload) {
   textRow("Matricola", scheda.matricola);
   textRow("Cognome", scheda.cognome);
   textRow("Nome", scheda.nome);
+  textRow("Reparto destinatario", formatRecipientUnit(payload.repartoDestinatario));
 
   sectionTitle("Ordine di priorità dei turni");
   const order = scheda.preferenze?.ordinePrioritaTurni || [];
@@ -508,6 +529,10 @@ async function downloadPayloadPdf(payload) {
       textRow(`Periodo ${index + 1}`, dettaglio ? `${periodo} - ${dettaglio}` : periodo);
     });
   }
+
+  sectionTitle("Formazione ed esercitazioni desiderate");
+  textRow("Corsi ed estensioni di qualifica", scheda.corsiQualificheDesiderati || "Nessuna indicazione");
+  textRow("Esercitazioni", scheda.esercitazioniDesiderate || "Nessuna indicazione");
 
   sectionTitle("Note generali");
   textRow("Note", scheda.note || "Nessuna nota");
