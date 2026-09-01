@@ -36,7 +36,9 @@ Gli amministratori accedono con `ADMIN_2` e `ADMIN_50`. Il ruolo effettivo viene
 letto dalla tabella protetta `amministratori`: il nome utente nel frontend non
 attribuisce permessi. Ogni amministratore vede solo la coda del proprio reparto,
 può aprire il dettaglio, aggiornare lo stato e scaricare il JSON originale di una
-scheda oppure una raccolta JSON delle schede selezionate.
+scheda oppure una raccolta JSON delle schede selezionate. Può inoltre eliminare
+definitivamente una scheda inviata per errore, dopo una conferma esplicita; la
+policy RLS limita la cancellazione alle sole schede del proprio reparto.
 
 Il formato della raccolta amministrativa è `raccolta_schede_operative_ofcn`
 versione 1. Ogni elemento contiene metadati di ricezione e il `payload` originale
