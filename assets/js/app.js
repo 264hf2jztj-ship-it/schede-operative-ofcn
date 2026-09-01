@@ -291,6 +291,7 @@ function buildPayload() {
       periodoDaEvitare: { dataInizio: "", dataFine: "" },
       disponibilitaNatale: textValue("#availability-christmas", true),
       disponibilitaEstate: textValue("#availability-summer", true),
+      disponibilitaDoppioTurno: textValue("#availability-double-shift", true),
       note: "",
     },
     lockManuali: [],
@@ -340,6 +341,7 @@ function createDraftSnapshot() {
     avoidedTurns: getAvoidedTurns(),
     availabilityChristmas: textValue("#availability-christmas"),
     availabilitySummer: textValue("#availability-summer"),
+    availabilityDoubleShift: textValue("#availability-double-shift"),
     unavailabilities: unavailabilities.map((item) => ({ ...item })),
   };
 }
@@ -370,8 +372,10 @@ function applyDraftSnapshot(snapshot) {
 
   const christmas = document.querySelector("#availability-christmas");
   const summer = document.querySelector("#availability-summer");
+  const doubleShift = document.querySelector("#availability-double-shift");
   if (christmas) christmas.value = String(snapshot.availabilityChristmas || "");
   if (summer) summer.value = String(snapshot.availabilitySummer || "");
+  if (doubleShift) doubleShift.value = String(snapshot.availabilityDoubleShift || "");
 
   unavailabilities = Array.isArray(snapshot.unavailabilities)
     ? snapshot.unavailabilities.map((item) => ({ ...item }))
@@ -491,6 +495,8 @@ async function downloadPayloadPdf(payload) {
   sectionTitle("Disponibilità nei periodi");
   textRow("Natale", formatAvailabilityForPdf(scheda.preferenze?.disponibilitaNatale));
   textRow("Estate", formatAvailabilityForPdf(scheda.preferenze?.disponibilitaEstate));
+  textRow("Doppio turno", formatAvailabilityForPdf(scheda.preferenze?.disponibilitaDoppioTurno));
+  textRow("Effetto", "Se disponibile, penalità del doppio turno ridotta ma non annullata");
 
   sectionTitle("Indisponibilità personali");
   if (!scheda.indisponibilita?.length) {
