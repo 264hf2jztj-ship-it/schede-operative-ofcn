@@ -165,6 +165,7 @@ declare
     turni_da_evitare jsonb;
     disponibilita_natale text;
     disponibilita_estate text;
+    disponibilita_doppio_turno text;
     punteggio_testo text;
     posizione integer;
     turno integer;
@@ -249,6 +250,7 @@ begin
     turni_da_evitare := scheda #> '{preferenze,turniDaEvitare}';
     disponibilita_natale := scheda #>> '{preferenze,disponibilitaNatale}';
     disponibilita_estate := scheda #>> '{preferenze,disponibilitaEstate}';
+    disponibilita_doppio_turno := scheda #>> '{preferenze,disponibilitaDoppioTurno}';
 
     if jsonb_typeof(priorita) is distinct from 'array'
        or jsonb_array_length(priorita) <> 3 then
@@ -312,8 +314,9 @@ begin
     end if;
 
     if coalesce(disponibilita_natale, '') not in ('DISPONIBILE', 'NON_DISPONIBILE')
-       or coalesce(disponibilita_estate, '') not in ('DISPONIBILE', 'NON_DISPONIBILE') then
-        raise exception 'Disponibilità Natale o Estate non valida';
+       or coalesce(disponibilita_estate, '') not in ('DISPONIBILE', 'NON_DISPONIBILE')
+       or coalesce(disponibilita_doppio_turno, '') not in ('DISPONIBILE', 'NON_DISPONIBILE') then
+        raise exception 'Disponibilità Natale, Estate o doppio turno non valida';
     end if;
 
     return new;
