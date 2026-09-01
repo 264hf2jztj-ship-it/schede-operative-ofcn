@@ -17,9 +17,9 @@ Sono previsti:
 
 Il form genera un JSON importabile dal software locale, invia una copia
 immutabile a Supabase e permette al compilatore di scaricare una copia PDF.
-Raccoglie soltanto matricola, cognome, nome, indisponibilità, ordine completo di
-priorità dei sei turni e note. Per il collaudo vanno utilizzati esclusivamente
-dati fittizi.
+Raccoglie soltanto matricola, cognome, nome, indisponibilità, tre priorità con
+punteggio 3–2–1, turni da evitare come vincoli deboli, disponibilità per Natale
+ed Estate e note. Per il collaudo vanno utilizzati esclusivamente dati fittizi.
 
 Collaudi superati: login `PLAN_OFCN`, persistenza della sessione, logout locale e
 nuovo accesso.
