@@ -12,7 +12,7 @@
     >
     <title>Accesso · Scheda operativa OFCN</title>
     <link rel="stylesheet" href="assets/css/app.css">
-    <script type="module" src="assets/js/app.js?v=20260901-5"></script>
+    <script type="module" src="assets/js/app.js?v=20260901-6"></script>
   </head>
   <body>
     <main class="page-shell">
@@ -260,6 +260,71 @@
             </div>
           </form>
 
+          <section id="admin-view" class="admin-view" hidden aria-labelledby="admin-title">
+            <div class="admin-heading">
+              <div>
+                <p class="eyebrow">Area amministrativa</p>
+                <h2 id="admin-title">Coda <span id="admin-unit-label"></span></h2>
+              </div>
+              <span id="admin-count" class="status-pill">0 schede</span>
+            </div>
+
+            <p class="section-help">
+              Sono visibili esclusivamente le schede destinate al tuo reparto.
+              Puoi consultarle, aggiornarne lo stato e scaricare il JSON originale.
+            </p>
+
+            <div class="admin-toolbar">
+              <div class="field-group">
+                <label for="admin-search">Cerca</label>
+                <input id="admin-search" type="search" placeholder="Matricola, cognome o nome" autocomplete="off">
+              </div>
+              <div class="field-group">
+                <label for="admin-status-filter">Stato</label>
+                <select id="admin-status-filter">
+                  <option value="">Tutti gli stati</option>
+                  <option value="nuova">Nuove</option>
+                  <option value="elaborata">Elaborate</option>
+                  <option value="archiviata">Archiviate</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="admin-actions">
+              <label class="selection-control">
+                <input id="admin-select-all" type="checkbox">
+                <span>Seleziona risultati</span>
+              </label>
+              <button id="admin-download-selected" class="secondary-button compact-button" type="button">
+                Scarica selezionate
+              </button>
+              <button id="admin-refresh" class="secondary-button compact-button" type="button">
+                Aggiorna elenco
+              </button>
+            </div>
+
+            <p id="admin-message" class="form-message" role="status" aria-live="polite"></p>
+
+            <section id="admin-loading" class="campaign-state" aria-live="polite">
+              <div class="notice">
+                <span class="notice-dot notice-dot--loading" aria-hidden="true"></span>
+                <div>
+                  <strong>Caricamento delle schede</strong>
+                  <span>Attendi qualche istante.</span>
+                </div>
+              </div>
+            </section>
+
+            <div id="admin-list" class="admin-list"></div>
+            <div id="admin-empty" class="notice" hidden>
+              <span class="notice-dot notice-dot--loading" aria-hidden="true"></span>
+              <div>
+                <strong>Nessuna scheda trovata</strong>
+                <span>Modifica i filtri oppure aggiorna l'elenco.</span>
+              </div>
+            </div>
+          </section>
+
           <div class="session-actions">
             <p id="logout-message" class="form-message" role="status" aria-live="polite"></p>
             <button id="logout-button" class="secondary-button" type="button">Esci da questo dispositivo</button>
@@ -281,6 +346,29 @@
         <div class="record-card__text"></div>
         <button class="remove-record" type="button" aria-label="Elimina elemento">Elimina</button>
       </article>
+    </template>
+
+    <template id="admin-response-template">
+      <details class="admin-response-card">
+        <summary>
+          <input class="admin-response-select" type="checkbox" aria-label="Seleziona scheda">
+          <span class="admin-response-identity"></span>
+          <span class="admin-response-meta"></span>
+          <span class="admin-response-status status-pill"></span>
+        </summary>
+        <div class="admin-response-detail"></div>
+        <div class="admin-response-actions">
+          <button class="download-response secondary-button compact-button" type="button">Scarica JSON</button>
+          <label class="inline-status-control">
+            <span>Stato</span>
+            <select class="admin-response-state">
+              <option value="nuova">Nuova</option>
+              <option value="elaborata">Elaborata</option>
+              <option value="archiviata">Archiviata</option>
+            </select>
+          </label>
+        </div>
+      </details>
     </template>
   </body>
 </html>
