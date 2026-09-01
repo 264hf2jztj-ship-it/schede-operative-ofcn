@@ -27,6 +27,19 @@ const elements = {
   campaignMessage: document.querySelector("#campaign-message"),
   campaignYear: document.querySelector("#campaign-year"),
   responseForm: document.querySelector("#response-form"),
+  adminView: document.querySelector("#admin-view"),
+  adminUnitLabel: document.querySelector("#admin-unit-label"),
+  adminCount: document.querySelector("#admin-count"),
+  adminSearch: document.querySelector("#admin-search"),
+  adminStatusFilter: document.querySelector("#admin-status-filter"),
+  adminSelectAll: document.querySelector("#admin-select-all"),
+  adminDownloadSelected: document.querySelector("#admin-download-selected"),
+  adminRefresh: document.querySelector("#admin-refresh"),
+  adminMessage: document.querySelector("#admin-message"),
+  adminLoading: document.querySelector("#admin-loading"),
+  adminList: document.querySelector("#admin-list"),
+  adminEmpty: document.querySelector("#admin-empty"),
+  adminResponseTemplate: document.querySelector("#admin-response-template"),
   responseMessage: document.querySelector("#response-message"),
   submitButton: document.querySelector("#submit-button"),
   downloadButton: document.querySelector("#download-button"),
@@ -54,6 +67,9 @@ let unavailabilities = [];
 let sentPayload = null;
 let isSubmitting = false;
 let pdfRecoveryCleanupTimer = null;
+let currentAdminUnit = "";
+let adminResponses = [];
+let selectedAdminResponseIds = new Set();
 
 function showView(viewName) {
   const views = {
@@ -102,7 +118,12 @@ function resetOperationalState() {
   unavailabilities = [];
   sentPayload = null;
   isSubmitting = false;
+  currentAdminUnit = "";
+  adminResponses = [];
+  selectedAdminResponseIds = new Set();
   elements.responseForm?.reset();
+  if (elements.adminView) elements.adminView.hidden = true;
+  if (elements.adminList) elements.adminList.replaceChildren();
   refreshTurnChoices();
   renderRecords();
   updateSentState(false);
@@ -145,7 +166,7 @@ async function loadActiveCampaign() {
   }
 }
 
-function renderSession(session) {
+async function renderSession(session) {
   if (!session?.user) {
     currentUserId = "";
     resetOperationalState();
@@ -162,6 +183,38 @@ function renderSession(session) {
   if (currentUserId !== session.user.id) {
     currentUserId = session.user.id;
     resetOperationalState();
+    currentUserId = session.user.id;
+
+    try {
+      const { data: adminRole, error } = await supabase
+        .from("amministratori")
+        .select("reparto")
+        .eq("user_id", session.user.id)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (adminRole?.reparto) {
+        currentAdminUnit = adminRole.reparto;
+        if (elements.sessionLabel) {
+          elements.sessionLabel.textContent = `Sessione amministrativa ${formatRecipientUnit(currentAdminUnit)} attiva.`;
+        }
+        showCampaignView("none");
+        if (elements.adminView) elements.adminView.hidden = false;
+        if (elements.adminUnitLabel) elements.adminUnitLabel.textContent = formatRecipientUnit(currentAdminUnit);
+        await loadAdminResponses();
+        return;
+      }
+    } catch {
+      setMessage(
+        elements.logoutMessage,
+        "Non è stato possibile verificare il profilo amministrativo. Ricarica la pagina o riprova più tardi.",
+        "error",
+      );
+      showCampaignView("none");
+      return;
+    }
+
+    if (elements.sessionLabel) elements.sessionLabel.textContent = "Sessione PLAN_OFCN attiva.";
     loadActiveCampaign();
   }
 }
@@ -185,7 +238,7 @@ async function handleLogin(event) {
       setMessage(elements.loginMessage, "Credenziali non valide oppure accesso non disponibile.", "error");
       return;
     }
-    renderSession(data.session);
+    await renderSession(data.session);
   } catch {
     setMessage(elements.loginMessage, "Impossibile contattare il servizio. Controlla la connessione e riprova.", "error");
   } finally {
@@ -337,6 +390,252 @@ function formatRecipientUnit(value) {
   if (value === "2_GRUPPO") return "2° Gruppo";
   if (value === "50_GRUPPO") return "50° Gruppo";
   return "Non indicato";
+}
+
+function formatAdminDateTime(value) {
+  if (!value) return "Non disponibile";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return new Intl.DateTimeFormat("it-IT", {
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(date);
+}
+
+function getResponseSheet(response) {
+  const payload = response?.risposta_json;
+  const yearKey = String(response?.anno ?? payload?.annoCorrente ?? "");
+  const yearSheets = payload?.schedeOperative?.[yearKey];
+  if (!yearSheets || typeof yearSheets !== "object") return null;
+  return Object.values(yearSheets)[0] ?? null;
+}
+
+function getFilteredAdminResponses() {
+  const search = elements.adminSearch?.value.trim().toLocaleUpperCase("it-IT") ?? "";
+  const status = elements.adminStatusFilter?.value ?? "";
+  return adminResponses.filter((response) => {
+    const sheet = getResponseSheet(response);
+    const haystack = [sheet?.matricola, sheet?.cognome, sheet?.nome, sheet?.nominativo]
+      .filter(Boolean)
+      .join(" ")
+      .toLocaleUpperCase("it-IT");
+    return (!search || haystack.includes(search)) && (!status || response.stato === status);
+  });
+}
+
+function addAdminDetail(container, label, value, wide = false) {
+  const row = document.createElement("div");
+  const heading = document.createElement("strong");
+  const content = document.createElement("span");
+  row.className = `admin-detail-row${wide ? " admin-detail-row--wide" : ""}`;
+  heading.textContent = label;
+  content.textContent = value || "Non indicato";
+  row.append(heading, content);
+  container.appendChild(row);
+}
+
+function getResponseFilename(response) {
+  const sheet = getResponseSheet(response);
+  const unit = response.reparto_destinatario || currentAdminUnit;
+  return [
+    "scheda_ofcn",
+    response.anno,
+    safeFilenamePart(sheet?.matricola),
+    safeFilenamePart(sheet?.cognome),
+    safeFilenamePart(unit),
+  ].join("_") + ".json";
+}
+
+function downloadJson(data, filename) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json;charset=utf-8" });
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = objectUrl;
+  link.download = filename;
+  link.rel = "noopener";
+  link.hidden = true;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
+}
+
+function updateAdminSelectionControls(filteredResponses = getFilteredAdminResponses()) {
+  const filteredIds = filteredResponses.map((response) => response.id);
+  const selectedFilteredCount = filteredIds.filter((id) => selectedAdminResponseIds.has(id)).length;
+  if (elements.adminSelectAll) {
+    elements.adminSelectAll.checked = filteredIds.length > 0 && selectedFilteredCount === filteredIds.length;
+    elements.adminSelectAll.indeterminate = selectedFilteredCount > 0 && selectedFilteredCount < filteredIds.length;
+  }
+  if (elements.adminDownloadSelected) {
+    elements.adminDownloadSelected.disabled = selectedAdminResponseIds.size === 0;
+    elements.adminDownloadSelected.textContent = selectedAdminResponseIds.size
+      ? `Scarica selezionate (${selectedAdminResponseIds.size})`
+      : "Scarica selezionate";
+  }
+}
+
+function renderAdminResponses() {
+  if (!elements.adminList || !elements.adminResponseTemplate) return;
+  const filteredResponses = getFilteredAdminResponses();
+  elements.adminList.replaceChildren();
+
+  filteredResponses.forEach((response) => {
+    const fragment = elements.adminResponseTemplate.content.cloneNode(true);
+    const card = fragment.querySelector(".admin-response-card");
+    const checkbox = fragment.querySelector(".admin-response-select");
+    const identity = fragment.querySelector(".admin-response-identity");
+    const meta = fragment.querySelector(".admin-response-meta");
+    const status = fragment.querySelector(".admin-response-status");
+    const detail = fragment.querySelector(".admin-response-detail");
+    const downloadButton = fragment.querySelector(".download-response");
+    const stateSelect = fragment.querySelector(".admin-response-state");
+    const sheet = getResponseSheet(response);
+    const preferences = sheet?.preferenze ?? {};
+    const priorityText = Array.isArray(preferences.ordinePrioritaTurni)
+      ? preferences.ordinePrioritaTurni.map((turn, index) => `${index + 1}ª: turno ${turn}`).join(" · ")
+      : "Non indicate";
+    const avoidedText = Array.isArray(preferences.turniDaEvitare) && preferences.turniDaEvitare.length
+      ? preferences.turniDaEvitare.map((turn) => `Turno ${turn}`).join(", ")
+      : "Nessuno";
+    const periods = Array.isArray(sheet?.indisponibilita) && sheet.indisponibilita.length
+      ? sheet.indisponibilita.map((item) => {
+        const range = `${formatDateForPdf(item.dataInizio)} – ${formatDateForPdf(item.dataFine)}`;
+        return [range, item.motivo, item.note].filter(Boolean).join(" · ");
+      }).join("\n")
+      : "Nessuna";
+
+    card.dataset.responseId = String(response.id);
+    checkbox.checked = selectedAdminResponseIds.has(response.id);
+    identity.textContent = [sheet?.cognome, sheet?.nome].filter(Boolean).join(" ") || "Nominativo non disponibile";
+    meta.textContent = `${sheet?.matricola || "Matricola non disponibile"} · ${formatAdminDateTime(response.ricevuto_il)}`;
+    status.textContent = response.stato;
+    stateSelect.value = response.stato;
+
+    addAdminDetail(detail, "Matricola", sheet?.matricola);
+    addAdminDetail(detail, "Anno", String(response.anno));
+    addAdminDetail(detail, "Priorità", priorityText, true);
+    addAdminDetail(detail, "Turni da evitare", avoidedText, true);
+    addAdminDetail(detail, "Natale", formatAvailabilityForPdf(preferences.disponibilitaNatale));
+    addAdminDetail(detail, "Estate", formatAvailabilityForPdf(preferences.disponibilitaEstate));
+    addAdminDetail(detail, "Doppio turno", formatAvailabilityForPdf(preferences.disponibilitaDoppioTurno), true);
+    addAdminDetail(detail, "Indisponibilità", periods, true);
+    addAdminDetail(detail, "Corsi e qualifiche desiderati", sheet?.corsiQualificheDesiderati, true);
+    addAdminDetail(detail, "Esercitazioni desiderate", sheet?.esercitazioniDesiderate, true);
+    addAdminDetail(detail, "Note", sheet?.note, true);
+
+    checkbox.addEventListener("click", (event) => event.stopPropagation());
+    checkbox.addEventListener("change", () => {
+      if (checkbox.checked) selectedAdminResponseIds.add(response.id);
+      else selectedAdminResponseIds.delete(response.id);
+      updateAdminSelectionControls();
+    });
+    downloadButton.addEventListener("click", () => {
+      downloadJson(response.risposta_json, getResponseFilename(response));
+      setMessage(elements.adminMessage, "JSON originale della scheda scaricato.", "success");
+    });
+    stateSelect.addEventListener("change", () => updateAdminResponseStatus(response, stateSelect));
+    elements.adminList.appendChild(fragment);
+  });
+
+  if (elements.adminCount) {
+    elements.adminCount.textContent = `${filteredResponses.length} ${filteredResponses.length === 1 ? "scheda" : "schede"}`;
+  }
+  if (elements.adminEmpty) elements.adminEmpty.hidden = filteredResponses.length > 0;
+  updateAdminSelectionControls(filteredResponses);
+}
+
+async function loadAdminResponses() {
+  if (!currentAdminUnit) return;
+  if (elements.adminLoading) elements.adminLoading.hidden = false;
+  if (elements.adminEmpty) elements.adminEmpty.hidden = true;
+  if (elements.adminRefresh) elements.adminRefresh.disabled = true;
+  setMessage(elements.adminMessage);
+
+  try {
+    const { data, error } = await supabase
+      .from("risposte")
+      .select("id, submission_id, anno, risposta_json, reparto_destinatario, stato, ricevuto_il, elaborato_il")
+      .eq("reparto_destinatario", currentAdminUnit)
+      .order("ricevuto_il", { ascending: false })
+      .limit(1000);
+    if (error) throw error;
+    adminResponses = data ?? [];
+    selectedAdminResponseIds = new Set(
+      [...selectedAdminResponseIds].filter((id) => adminResponses.some((response) => response.id === id)),
+    );
+    renderAdminResponses();
+  } catch {
+    adminResponses = [];
+    renderAdminResponses();
+    setMessage(elements.adminMessage, "Impossibile caricare le schede del reparto. Riprova.", "error");
+  } finally {
+    if (elements.adminLoading) elements.adminLoading.hidden = true;
+    if (elements.adminRefresh) elements.adminRefresh.disabled = false;
+  }
+}
+
+async function updateAdminResponseStatus(response, select) {
+  const previousStatus = response.stato;
+  const nextStatus = select.value;
+  select.disabled = true;
+  setMessage(elements.adminMessage);
+
+  try {
+    const { data, error } = await supabase
+      .from("risposte")
+      .update({ stato: nextStatus })
+      .eq("id", response.id)
+      .eq("reparto_destinatario", currentAdminUnit)
+      .select("id, stato, elaborato_il")
+      .single();
+    if (error) throw error;
+    response.stato = data.stato;
+    response.elaborato_il = data.elaborato_il;
+    renderAdminResponses();
+    setMessage(elements.adminMessage, "Stato della scheda aggiornato.", "success");
+  } catch {
+    select.value = previousStatus;
+    setMessage(elements.adminMessage, "Aggiornamento non riuscito. La scheda non è stata modificata.", "error");
+  } finally {
+    select.disabled = false;
+  }
+}
+
+function downloadSelectedAdminResponses() {
+  const selected = adminResponses.filter((response) => selectedAdminResponseIds.has(response.id));
+  if (!selected.length) {
+    setMessage(elements.adminMessage, "Seleziona almeno una scheda da scaricare.", "error");
+    return;
+  }
+
+  const exportPayload = {
+    tipoFile: "raccolta_schede_operative_ofcn",
+    versione: 1,
+    repartoDestinatario: currentAdminUnit,
+    esportatoIl: new Date().toISOString(),
+    numeroSchede: selected.length,
+    risposte: selected.map((response) => ({
+      idRicezione: response.id,
+      submissionId: response.submission_id,
+      ricevutoIl: response.ricevuto_il,
+      stato: response.stato,
+      payload: response.risposta_json,
+    })),
+  };
+  const datePart = new Date().toISOString().slice(0, 10);
+  downloadJson(exportPayload, `raccolta_schede_ofcn_${safeFilenamePart(currentAdminUnit)}_${datePart}.json`);
+  setMessage(elements.adminMessage, `Raccolta di ${selected.length} schede scaricata.`, "success");
+}
+
+function toggleAllFilteredAdminResponses() {
+  const filtered = getFilteredAdminResponses();
+  if (elements.adminSelectAll?.checked) {
+    filtered.forEach((response) => selectedAdminResponseIds.add(response.id));
+  } else {
+    filtered.forEach((response) => selectedAdminResponseIds.delete(response.id));
+  }
+  renderAdminResponses();
 }
 
 function createDraftSnapshot() {
@@ -803,10 +1102,17 @@ async function initialize() {
   elements.responseForm?.addEventListener("submit", handleSubmit);
   elements.downloadButton?.addEventListener("click", handleDownload);
   elements.addUnavailability?.addEventListener("click", addUnavailability);
+  elements.adminSearch?.addEventListener("input", renderAdminResponses);
+  elements.adminStatusFilter?.addEventListener("change", renderAdminResponses);
+  elements.adminSelectAll?.addEventListener("change", toggleAllFilteredAdminResponses);
+  elements.adminDownloadSelected?.addEventListener("click", downloadSelectedAdminResponses);
+  elements.adminRefresh?.addEventListener("click", loadAdminResponses);
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") restorePendingPdfDraft();
   });
-  supabase.auth.onAuthStateChange((_event, session) => renderSession(session));
+  supabase.auth.onAuthStateChange((_event, session) => {
+    window.setTimeout(() => renderSession(session), 0);
+  });
 
   try {
     const { data, error } = await supabase.auth.getSession();
@@ -815,7 +1121,7 @@ async function initialize() {
       showView("login");
       return;
     }
-    renderSession(data.session);
+    await renderSession(data.session);
   } catch {
     setMessage(elements.loginMessage, "Servizio temporaneamente non raggiungibile.", "error");
     showView("login");
