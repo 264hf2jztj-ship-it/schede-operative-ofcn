@@ -12,7 +12,7 @@
     >
     <title>Accesso · Scheda operativa OFCN</title>
     <link rel="stylesheet" href="assets/css/app.css">
-    <script type="module" src="assets/js/app.js?v=20260901-2"></script>
+    <script type="module" src="assets/js/app.js?v=20260901-3"></script>
   </head>
   <body>
     <main class="page-shell">
@@ -117,8 +117,9 @@
             </div>
 
             <p class="section-help">
-              I dati restano nel browser fino all'invio. Compila i dati personali
-              e ordina tutti i turni; indisponibilità e note sono facoltative.
+              I dati restano nel browser fino all'invio. Compila i dati personali,
+              indica tre priorità e la disponibilità per Natale ed Estate;
+              indisponibilità, turni da evitare e note sono facoltativi.
             </p>
 
             <fieldset class="form-section">
@@ -153,12 +154,40 @@
             </details>
 
             <fieldset class="form-section">
-              <legend>3. Ordine di priorità dei turni</legend>
+              <legend>3. Preferenze e disponibilità</legend>
               <p class="section-help">
-                Assegna ogni turno una sola volta, dal più preferito al meno preferito.
-                Il punteggio viene attribuito automaticamente da 6 a 1.
+                Indica soltanto i tre turni preferiti. Il punteggio viene attribuito
+                automaticamente: 3 punti alla prima scelta, 2 alla seconda e 1 alla terza.
               </p>
               <div id="priority-grid" class="priority-grid"></div>
+
+              <div class="preference-subsection">
+                <p class="preference-title">Turni da evitare preferibilmente</p>
+                <p class="section-help">
+                  Selezione facoltativa. Questi turni sono vincoli deboli: non rendono
+                  impossibile una soluzione, ma la penalizzano nel calcolo.
+                </p>
+                <div id="avoid-grid" class="avoid-grid"></div>
+              </div>
+
+              <div class="preference-subsection form-grid">
+                <div class="field-group">
+                  <label for="availability-christmas">Disponibile a svolgere il turno di Natale? *</label>
+                  <select id="availability-christmas" name="availability-christmas" required>
+                    <option value="">Seleziona</option>
+                    <option value="DISPONIBILE">Sì, disponibile</option>
+                    <option value="NON_DISPONIBILE">No, non disponibile</option>
+                  </select>
+                </div>
+                <div class="field-group">
+                  <label for="availability-summer">Disponibile a svolgere il turno estivo? *</label>
+                  <select id="availability-summer" name="availability-summer" required>
+                    <option value="">Seleziona</option>
+                    <option value="DISPONIBILE">Sì, disponibile</option>
+                    <option value="NON_DISPONIBILE">No, non disponibile</option>
+                  </select>
+                </div>
+              </div>
             </fieldset>
 
             <div class="field-group">
