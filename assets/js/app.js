@@ -5,6 +5,7 @@ import { jsPDF } from "https://cdn.jsdelivr.net/npm/jspdf@4.2.0/+esm";
 import { LOGIN_ALIASES, SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "./config.js";
 
 const STORAGE_KEY = "aup_pianificazione_ofcn_scadenze_operative_v1";
+const PDF_DRAFT_RECOVERY_KEY = "ofcn-pdf-draft-recovery-v1";
 const TURN_COUNT = 6;
 
 const elements = {
@@ -50,6 +51,7 @@ let currentUserId = "";
 let unavailabilities = [];
 let sentPayload = null;
 let isSubmitting = false;
+let pdfRecoveryCleanupTimer = null;
 
 function showView(viewName) {
   const views = {
@@ -131,6 +133,7 @@ async function loadActiveCampaign() {
     activeCampaign = campaign;
     if (elements.campaignYear) elements.campaignYear.textContent = String(campaign.anno);
     showCampaignView("form");
+    restorePendingPdfDraft();
   } catch {
     if (elements.campaignMessage) {
       elements.campaignMessage.textContent =
@@ -305,6 +308,84 @@ function formatDateForPdf(value) {
   return year && month && day ? `${day}/${month}/${year}` : String(value || "");
 }
 
+function createDraftSnapshot() {
+  return {
+    savedAt: Date.now(),
+    anno: Number(activeCampaign?.anno || 0),
+    matricola: textValue("#matricola"),
+    cognome: textValue("#cognome"),
+    nome: textValue("#nome"),
+    note: textValue("#general-notes"),
+    priorityOrder: Array.from(document.querySelectorAll("[data-priority-position]"))
+      .map((select) => select.value),
+    unavailabilities: unavailabilities.map((item) => ({ ...item })),
+  };
+}
+
+function applyDraftSnapshot(snapshot) {
+  if (!snapshot || Number(snapshot.anno) !== Number(activeCampaign?.anno)) return false;
+
+  const values = {
+    "#matricola": snapshot.matricola,
+    "#cognome": snapshot.cognome,
+    "#nome": snapshot.nome,
+    "#general-notes": snapshot.note,
+  };
+  Object.entries(values).forEach(([selector, value]) => {
+    const field = document.querySelector(selector);
+    if (field) field.value = String(value || "");
+  });
+
+  const selectors = Array.from(document.querySelectorAll("[data-priority-position]"));
+  selectors.forEach((select, index) => {
+    select.value = String(snapshot.priorityOrder?.[index] || "");
+  });
+
+  unavailabilities = Array.isArray(snapshot.unavailabilities)
+    ? snapshot.unavailabilities.map((item) => ({ ...item }))
+    : [];
+  refreshPriorityOptions();
+  renderRecords();
+  return true;
+}
+
+function clearPdfRecoveryStorage() {
+  try {
+    window.sessionStorage.removeItem(PDF_DRAFT_RECOVERY_KEY);
+  } catch {
+    // Nessuna azione necessaria: alcuni browser possono bloccare lo storage.
+  }
+}
+
+function saveDraftForPdfRecovery(snapshot) {
+  try {
+    window.sessionStorage.setItem(PDF_DRAFT_RECOVERY_KEY, JSON.stringify(snapshot));
+  } catch {
+    // Il ripristino immediato resta disponibile anche se lo storage è bloccato.
+  }
+
+  if (pdfRecoveryCleanupTimer) window.clearTimeout(pdfRecoveryCleanupTimer);
+  pdfRecoveryCleanupTimer = window.setTimeout(() => {
+    clearPdfRecoveryStorage();
+    pdfRecoveryCleanupTimer = null;
+  }, 30000);
+}
+
+function restorePendingPdfDraft() {
+  let snapshot = null;
+  try {
+    const stored = window.sessionStorage.getItem(PDF_DRAFT_RECOVERY_KEY);
+    if (stored) snapshot = JSON.parse(stored);
+    clearPdfRecoveryStorage();
+  } catch {
+    clearPdfRecoveryStorage();
+    return;
+  }
+
+  if (!snapshot || Date.now() - Number(snapshot.savedAt || 0) > 120000) return;
+  applyDraftSnapshot(snapshot);
+}
+
 function downloadPayloadPdf(payload) {
   const year = payload.annoCorrente;
   const block = payload.schedeOperative[String(year)];
@@ -394,11 +475,16 @@ function downloadPayloadPdf(payload) {
   doc.save(filename);
 }
 
-function handleDownload() {
+function handleDownload(event) {
+  event?.preventDefault();
+  event?.stopPropagation();
   setMessage(elements.responseMessage);
   try {
     const payload = sentPayload || buildPayload();
+    const draftSnapshot = createDraftSnapshot();
+    saveDraftForPdfRecovery(draftSnapshot);
     downloadPayloadPdf(payload);
+    applyDraftSnapshot(draftSnapshot);
     setMessage(elements.responseMessage, sentPayload ? "Copia PDF della risposta inviata scaricata." : "Bozza PDF scaricata.", "success");
   } catch (error) {
     setMessage(elements.responseMessage, error.message || "Impossibile creare il file PDF.", "error");
