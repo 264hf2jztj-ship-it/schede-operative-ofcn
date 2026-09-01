@@ -12,7 +12,7 @@
     >
     <title>Accesso · Scheda operativa OFCN</title>
     <link rel="stylesheet" href="assets/css/app.css">
-    <script type="module" src="assets/js/app.js?v=20260901-4"></script>
+    <script type="module" src="assets/js/app.js?v=20260901-5"></script>
   </head>
   <body>
     <main class="page-shell">
@@ -118,8 +118,8 @@
 
             <p class="section-help">
               I dati restano nel browser fino all'invio. Compila i dati personali,
-              indica tre priorità e le disponibilità richieste;
-              indisponibilità, turni da evitare e note sono facoltativi.
+              scegli il reparto destinatario, indica tre priorità e le disponibilità
+              richieste; indisponibilità e desiderata sono facoltativi.
             </p>
 
             <fieldset class="form-section">
@@ -140,8 +140,25 @@
               </div>
             </fieldset>
 
+            <fieldset class="form-section">
+              <legend>2. Reparto destinatario</legend>
+              <p class="section-help">
+                La scheda sarà inserita esclusivamente nella coda amministrativa del reparto selezionato.
+              </p>
+              <div class="unit-choice-grid">
+                <label class="unit-option unit-option--second">
+                  <input type="radio" name="recipient-unit" value="2_GRUPPO" required>
+                  <span>2° Gruppo</span>
+                </label>
+                <label class="unit-option unit-option--fiftieth">
+                  <input type="radio" name="recipient-unit" value="50_GRUPPO" required>
+                  <span>50° Gruppo</span>
+                </label>
+              </div>
+            </fieldset>
+
             <details class="form-section">
-              <summary>2. Indisponibilità personali <span id="unavailability-count">0 inserite</span></summary>
+              <summary>3. Indisponibilità personali <span id="unavailability-count">0 inserite</span></summary>
               <p class="section-help">Aggiungi ogni periodo nel quale non puoi essere impiegato.</p>
               <div class="form-grid">
                 <div class="field-group"><label for="unavailability-start">Data inizio</label><input id="unavailability-start" type="date"></div>
@@ -154,7 +171,7 @@
             </details>
 
             <fieldset class="form-section">
-              <legend>3. Preferenze e disponibilità</legend>
+              <legend>4. Preferenze e disponibilità</legend>
               <p class="section-help">
                 Indica soltanto i tre turni preferiti. Il punteggio viene attribuito
                 automaticamente: 3 punti alla prima scelta, 2 alla seconda e 1 alla terza.
@@ -198,6 +215,35 @@
                     La risposta positiva ridurrà la penalità del doppio turno, senza eliminarla.
                   </small>
                 </div>
+              </div>
+            </fieldset>
+
+            <fieldset class="form-section">
+              <legend>5. Formazione ed esercitazioni desiderate</legend>
+              <p class="section-help">
+                Informazioni facoltative destinate all'Ufficio Piani del reparto selezionato.
+              </p>
+              <div class="field-group">
+                <label for="desired-training">
+                  Corsi interni o esterni alla Brigata ed estensioni di qualifica desiderati
+                </label>
+                <textarea
+                  id="desired-training"
+                  name="desired-training"
+                  rows="5"
+                  maxlength="4000"
+                  placeholder="Indica corsi, attività formative o estensioni di qualifica che vorresti conseguire."
+                ></textarea>
+              </div>
+              <div class="field-group">
+                <label for="desired-exercises">Esercitazioni desiderate</label>
+                <textarea
+                  id="desired-exercises"
+                  name="desired-exercises"
+                  rows="5"
+                  maxlength="4000"
+                  placeholder="Indica le esercitazioni alle quali vorresti partecipare."
+                ></textarea>
               </div>
             </fieldset>
 
