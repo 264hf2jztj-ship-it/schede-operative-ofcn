@@ -6,4 +6,6 @@ export const SUPABASE_PUBLISHABLE_KEY =
 
 export const LOGIN_ALIASES = Object.freeze({
   PLAN_OFCN: "plan-ofcn@schede-operative-ofcn.invalid",
+  ADMIN_2: "admin-2@schede-operative-ofcn.invalid",
+  ADMIN_50: "admin-50@schede-operative-ofcn.invalid",
 });
