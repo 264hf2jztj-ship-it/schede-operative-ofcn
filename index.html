@@ -12,7 +12,7 @@
     >
     <title>Accesso · Scheda operativa OFCN</title>
     <link rel="stylesheet" href="assets/css/app.css">
-    <script type="module" src="assets/js/app.js?v=20260901-3"></script>
+    <script type="module" src="assets/js/app.js?v=20260901-4"></script>
   </head>
   <body>
     <main class="page-shell">
@@ -118,7 +118,7 @@
 
             <p class="section-help">
               I dati restano nel browser fino all'invio. Compila i dati personali,
-              indica tre priorità e la disponibilità per Natale ed Estate;
+              indica tre priorità e le disponibilità richieste;
               indisponibilità, turni da evitare e note sono facoltativi.
             </p>
 
@@ -186,6 +186,17 @@
                     <option value="DISPONIBILE">Sì, disponibile</option>
                     <option value="NON_DISPONIBILE">No, non disponibile</option>
                   </select>
+                </div>
+                <div class="field-group">
+                  <label for="availability-double-shift">Disponibile a svolgere un doppio turno? *</label>
+                  <select id="availability-double-shift" name="availability-double-shift" required>
+                    <option value="">Seleziona</option>
+                    <option value="DISPONIBILE">Sì, disponibile</option>
+                    <option value="NON_DISPONIBILE">No, non disponibile</option>
+                  </select>
+                  <small class="field-help">
+                    La risposta positiva ridurrà la penalità del doppio turno, senza eliminarla.
+                  </small>
                 </div>
               </div>
             </fieldset>
