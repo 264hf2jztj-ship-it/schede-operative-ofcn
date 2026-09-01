@@ -201,6 +201,12 @@ button {
   font-weight: 700;
 }
 
+.field-help {
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
 .field-group input,
 .field-group select,
 .field-group textarea {
