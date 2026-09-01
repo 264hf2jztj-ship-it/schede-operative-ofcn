@@ -7,6 +7,7 @@ import { LOGIN_ALIASES, SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "./config.
 const STORAGE_KEY = "aup_pianificazione_ofcn_scadenze_operative_v1";
 const PDF_DRAFT_RECOVERY_KEY = "ofcn-pdf-draft-recovery-v1";
 const TURN_COUNT = 6;
+const PRIORITY_COUNT = 3;
 
 const elements = {
   currentYear: document.querySelector("#current-year"),
@@ -34,6 +35,7 @@ const elements = {
   unavailabilityList: document.querySelector("#unavailability-list"),
   unavailabilityCount: document.querySelector("#unavailability-count"),
   priorityGrid: document.querySelector("#priority-grid"),
+  avoidGrid: document.querySelector("#avoid-grid"),
   recordTemplate: document.querySelector("#record-template"),
 };
 
@@ -101,7 +103,7 @@ function resetOperationalState() {
   sentPayload = null;
   isSubmitting = false;
   elements.responseForm?.reset();
-  refreshPriorityOptions();
+  refreshTurnChoices();
   renderRecords();
   updateSentState(false);
 }
@@ -236,10 +238,16 @@ function getPriorityOrder() {
   if (order.some((turn) => !Number.isInteger(turn) || turn < 1 || turn > TURN_COUNT)) {
     throw new Error("Assegna un turno a ogni posizione di priorità.");
   }
-  if (new Set(order).size !== TURN_COUNT) {
-    throw new Error("Ogni turno deve comparire una sola volta nell'ordine di priorità.");
+  if (new Set(order).size !== PRIORITY_COUNT) {
+    throw new Error("I tre turni preferiti devono essere diversi tra loro.");
   }
   return order;
+}
+
+function getAvoidedTurns() {
+  return Array.from(document.querySelectorAll("[data-avoid-turn]:checked"))
+    .map((checkbox) => Number(checkbox.value))
+    .filter((turn) => Number.isInteger(turn) && turn >= 1 && turn <= TURN_COUNT);
 }
 
 function buildPayload() {
@@ -253,9 +261,14 @@ function buildPayload() {
   const nome = textValue("#nome", true);
   const anno = Number(activeCampaign.anno);
   const ordinePrioritaTurni = getPriorityOrder();
+  const turniDaEvitare = getAvoidedTurns();
   const punteggiPrioritaTurni = Object.fromEntries(
-    ordinePrioritaTurni.map((turno, index) => [`T${turno}`, TURN_COUNT - index]),
+    ordinePrioritaTurni.map((turno, index) => [`T${turno}`, PRIORITY_COUNT - index]),
   );
+
+  if (turniDaEvitare.some((turno) => ordinePrioritaTurni.includes(turno))) {
+    throw new Error("Un turno preferito non può essere indicato anche tra quelli da evitare.");
+  }
 
   const scheda = {
     matricola,
@@ -273,11 +286,11 @@ function buildPayload() {
       ordinePrioritaTurni,
       punteggiPrioritaTurni,
       turniPreferiti: ordinePrioritaTurni,
-      turniDaEvitare: [],
+      turniDaEvitare,
       periodoPreferito: { dataInizio: "", dataFine: "" },
       periodoDaEvitare: { dataInizio: "", dataFine: "" },
-      disponibilitaNatale: "",
-      disponibilitaEstate: "",
+      disponibilitaNatale: textValue("#availability-christmas", true),
+      disponibilitaEstate: textValue("#availability-summer", true),
       note: "",
     },
     lockManuali: [],
@@ -308,6 +321,12 @@ function formatDateForPdf(value) {
   return year && month && day ? `${day}/${month}/${year}` : String(value || "");
 }
 
+function formatAvailabilityForPdf(value) {
+  if (value === "DISPONIBILE") return "Sì, disponibile";
+  if (value === "NON_DISPONIBILE") return "No, non disponibile";
+  return "Non indicata";
+}
+
 function createDraftSnapshot() {
   return {
     savedAt: Date.now(),
@@ -318,6 +337,9 @@ function createDraftSnapshot() {
     note: textValue("#general-notes"),
     priorityOrder: Array.from(document.querySelectorAll("[data-priority-position]"))
       .map((select) => select.value),
+    avoidedTurns: getAvoidedTurns(),
+    availabilityChristmas: textValue("#availability-christmas"),
+    availabilitySummer: textValue("#availability-summer"),
     unavailabilities: unavailabilities.map((item) => ({ ...item })),
   };
 }
@@ -341,10 +363,20 @@ function applyDraftSnapshot(snapshot) {
     select.value = String(snapshot.priorityOrder?.[index] || "");
   });
 
+  const avoidedTurns = new Set((snapshot.avoidedTurns || []).map(String));
+  document.querySelectorAll("[data-avoid-turn]").forEach((checkbox) => {
+    checkbox.checked = avoidedTurns.has(checkbox.value);
+  });
+
+  const christmas = document.querySelector("#availability-christmas");
+  const summer = document.querySelector("#availability-summer");
+  if (christmas) christmas.value = String(snapshot.availabilityChristmas || "");
+  if (summer) summer.value = String(snapshot.availabilitySummer || "");
+
   unavailabilities = Array.isArray(snapshot.unavailabilities)
     ? snapshot.unavailabilities.map((item) => ({ ...item }))
     : [];
-  refreshPriorityOptions();
+  refreshTurnChoices();
   renderRecords();
   return true;
 }
@@ -444,9 +476,21 @@ async function downloadPayloadPdf(payload) {
   sectionTitle("Ordine di priorità dei turni");
   const order = scheda.preferenze?.ordinePrioritaTurni || [];
   order.forEach((turn, index) => {
-    const score = TURN_COUNT - index;
+    const score = PRIORITY_COUNT - index;
     textRow(`${index + 1}a priorità`, `Turno ${turn} - ${score} ${score === 1 ? "punto" : "punti"}`);
   });
+
+  sectionTitle("Turni da evitare preferibilmente");
+  const avoidedTurns = scheda.preferenze?.turniDaEvitare || [];
+  textRow(
+    "Turni",
+    avoidedTurns.length ? avoidedTurns.map((turn) => `Turno ${turn}`).join(", ") : "Nessuno",
+  );
+  textRow("Trattamento", "Vincolo debole: applica una penalità, non esclude la soluzione");
+
+  sectionTitle("Disponibilità nei periodi");
+  textRow("Natale", formatAvailabilityForPdf(scheda.preferenze?.disponibilitaNatale));
+  textRow("Estate", formatAvailabilityForPdf(scheda.preferenze?.disponibilitaEstate));
 
   sectionTitle("Indisponibilità personali");
   if (!scheda.indisponibilita?.length) {
@@ -634,15 +678,27 @@ function renderRecords() {
   if (elements.unavailabilityCount) elements.unavailabilityCount.textContent = `${unavailabilities.length} inserite`;
 }
 
-function refreshPriorityOptions() {
+function refreshTurnChoices() {
   const selectors = Array.from(document.querySelectorAll("[data-priority-position]"));
   const selectedTurns = new Set(selectors.map((select) => select.value).filter(Boolean));
+  const avoidedCheckboxes = Array.from(document.querySelectorAll("[data-avoid-turn]"));
+  const avoidedTurns = new Set(
+    avoidedCheckboxes.filter((checkbox) => checkbox.checked).map((checkbox) => checkbox.value),
+  );
 
   selectors.forEach((select) => {
     Array.from(select.options).forEach((option) => {
       if (!option.value) return;
-      option.disabled = option.value !== select.value && selectedTurns.has(option.value);
+      option.disabled = option.value !== select.value
+        && (selectedTurns.has(option.value) || avoidedTurns.has(option.value));
     });
+  });
+
+  avoidedCheckboxes.forEach((checkbox) => {
+    const isPreferred = selectedTurns.has(checkbox.value);
+    if (isPreferred) checkbox.checked = false;
+    checkbox.disabled = isPreferred;
+    checkbox.closest(".avoid-option")?.classList.toggle("avoid-option--disabled", isPreferred);
   });
 }
 
@@ -650,13 +706,13 @@ function initializePrioritySelectors() {
   if (!elements.priorityGrid) return;
   elements.priorityGrid.replaceChildren();
 
-  for (let position = 1; position <= TURN_COUNT; position += 1) {
+  for (let position = 1; position <= PRIORITY_COUNT; position += 1) {
     const wrapper = document.createElement("div");
     wrapper.className = "field-group priority-field";
 
     const label = document.createElement("label");
     const select = document.createElement("select");
-    const score = TURN_COUNT - position + 1;
+    const score = PRIORITY_COUNT - position + 1;
     const selectId = `priority-${position}`;
 
     label.htmlFor = selectId;
@@ -678,15 +734,38 @@ function initializePrioritySelectors() {
       select.appendChild(option);
     }
 
-    select.addEventListener("change", refreshPriorityOptions);
+    select.addEventListener("change", refreshTurnChoices);
     wrapper.append(label, select);
     elements.priorityGrid.appendChild(wrapper);
+  }
+}
+
+function initializeAvoidTurnOptions() {
+  if (!elements.avoidGrid) return;
+  elements.avoidGrid.replaceChildren();
+
+  for (let turn = 1; turn <= TURN_COUNT; turn += 1) {
+    const label = document.createElement("label");
+    const checkbox = document.createElement("input");
+    const text = document.createElement("span");
+
+    label.className = "avoid-option";
+    checkbox.type = "checkbox";
+    checkbox.value = String(turn);
+    checkbox.dataset.avoidTurn = String(turn);
+    checkbox.addEventListener("change", refreshTurnChoices);
+    text.textContent = `Turno ${turn}`;
+
+    label.append(checkbox, text);
+    elements.avoidGrid.appendChild(label);
   }
 }
 
 async function initialize() {
   if (elements.currentYear) elements.currentYear.textContent = String(new Date().getFullYear());
   initializePrioritySelectors();
+  initializeAvoidTurnOptions();
+  refreshTurnChoices();
   renderRecords();
   elements.loginForm?.addEventListener("submit", handleLogin);
   elements.logoutButton?.addEventListener("click", handleLogout);
