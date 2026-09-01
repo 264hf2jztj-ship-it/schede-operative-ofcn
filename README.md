@@ -22,6 +22,10 @@ punteggio 3–2–1, turni da evitare come vincoli deboli, disponibilità per Na
 ed Estate, disponibilità al doppio turno e note. Per il collaudo vanno utilizzati
 esclusivamente dati fittizi.
 
+La scheda raccoglie inoltre corsi, estensioni di qualifica ed esercitazioni
+desiderate. La scelta obbligatoria tra 2° Gruppo e 50° Gruppo instrada ogni
+risposta verso una coda amministrativa separata e protetta.
+
 Collaudi superati: login `PLAN_OFCN`, persistenza della sessione, logout locale e
 nuovo accesso.
 
