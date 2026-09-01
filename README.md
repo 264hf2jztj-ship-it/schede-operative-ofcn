@@ -10,7 +10,7 @@ collaudo con la campagna 2027 temporaneamente aperta.
 Sono previsti:
 
 - un account condiviso per il personale;
-- un account amministratore separato;
+- due account amministratore separati, uno per ciascun reparto;
 - sessioni contemporanee indipendenti;
 - logout limitato al dispositivo corrente;
 - nessuna anagrafica preventiva del personale.
@@ -47,6 +47,7 @@ docs/
   STEP_4_FORM.md
 sql/
   001_schema_sicurezza.sql
+  002_reparti_formazione.sql
 ```
 
 La chiave pubblicabile Supabase presente in `config.js` è destinata al browser.
