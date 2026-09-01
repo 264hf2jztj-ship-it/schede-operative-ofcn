@@ -285,8 +285,156 @@ button {
 }
 
 .campaign-state[hidden],
-.response-form[hidden] {
+.response-form[hidden],
+.admin-view[hidden] {
   display: none;
+}
+
+.admin-view {
+  margin-top: 1.5rem;
+}
+
+.admin-heading,
+.admin-actions,
+.admin-response-actions {
+  display: flex;
+  gap: 0.8rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.admin-heading h2 {
+  margin: 0.25rem 0 0;
+}
+
+.admin-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(12rem, 1fr);
+  gap: 0 1rem;
+}
+
+.admin-actions {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  margin: 0.25rem 0 1rem;
+}
+
+.selection-control {
+  display: inline-flex;
+  gap: 0.5rem;
+  align-items: center;
+  min-height: 2.75rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.selection-control input,
+.admin-response-select {
+  width: 1.15rem;
+  height: 1.15rem;
+  accent-color: var(--primary);
+}
+
+.admin-list {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.admin-response-card {
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: #fbfdff;
+  overflow: hidden;
+}
+
+.admin-response-card summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  gap: 0.65rem;
+  align-items: center;
+  padding: 1rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.admin-response-card summary::-webkit-details-marker {
+  display: none;
+}
+
+.admin-response-identity {
+  min-width: 0;
+  color: var(--text);
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.admin-response-meta {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.admin-response-status {
+  text-transform: capitalize;
+}
+
+.admin-response-detail {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem 1rem;
+  padding: 1rem;
+  border-top: 1px solid var(--border);
+  background: #ffffff;
+}
+
+.admin-detail-row {
+  min-width: 0;
+}
+
+.admin-detail-row strong,
+.admin-detail-row span {
+  display: block;
+}
+
+.admin-detail-row strong {
+  color: var(--muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.admin-detail-row span {
+  margin-top: 0.15rem;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.admin-detail-row--wide {
+  grid-column: 1 / -1;
+}
+
+.admin-response-actions {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  padding: 0 1rem 1rem;
+  background: #ffffff;
+}
+
+.inline-status-control {
+  display: inline-flex;
+  gap: 0.5rem;
+  align-items: center;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.inline-status-control select {
+  min-height: 2.75rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 0.7rem;
+  color: var(--text);
+  background: #ffffff;
+  font: inherit;
 }
 
 .campaign-heading {
@@ -546,7 +694,9 @@ footer {
   .priority-grid,
   .avoid-grid,
   .unit-choice-grid,
-  .form-actions {
+  .form-actions,
+  .admin-toolbar,
+  .admin-response-detail {
     grid-template-columns: 1fr;
   }
 
@@ -561,6 +711,19 @@ footer {
 
   .record-card {
     align-items: flex-start;
+  }
+
+  .admin-heading {
+    display: block;
+  }
+
+  .admin-response-card summary {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .admin-response-meta,
+  .admin-response-status {
+    grid-column: 2;
   }
 }
 
