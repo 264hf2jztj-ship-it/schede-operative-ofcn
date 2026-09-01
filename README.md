@@ -4,8 +4,8 @@ Portale web separato dal software **Automazione Ufficio Piani**.
 
 ## Stato
 
-Step 3 completato. Il form operativo collegato a Supabase è pubblicato ed è in
-collaudo con la campagna 2027 temporaneamente aperta.
+Il form operativo e l'area amministrativa collegati a Supabase sono pubblicati
+e in collaudo con la campagna 2027 temporaneamente aperta.
 
 Sono previsti:
 
@@ -26,11 +26,21 @@ La scheda raccoglie inoltre corsi, estensioni di qualifica ed esercitazioni
 desiderate. La scelta obbligatoria tra 2° Gruppo e 50° Gruppo instrada ogni
 risposta verso una coda amministrativa separata e protetta.
 
-Collaudi superati: login `PLAN_OFCN`, persistenza della sessione, logout locale e
-nuovo accesso.
+Collaudi superati: login `PLAN_OFCN`, persistenza della sessione, logout locale,
+nuovo accesso e instradamento separato delle risposte.
 
 Il personale accederà con il nome utente `PLAN_OFCN`. Il frontend lo associa
 all'identificativo email tecnico richiesto internamente da Supabase Auth.
+
+Gli amministratori accedono con `ADMIN_2` e `ADMIN_50`. Il ruolo effettivo viene
+letto dalla tabella protetta `amministratori`: il nome utente nel frontend non
+attribuisce permessi. Ogni amministratore vede solo la coda del proprio reparto,
+può aprire il dettaglio, aggiornare lo stato e scaricare il JSON originale di una
+scheda oppure una raccolta JSON delle schede selezionate.
+
+Il formato della raccolta amministrativa è `raccolta_schede_operative_ofcn`
+versione 1. Ogni elemento contiene metadati di ricezione e il `payload` originale
+inviato dal compilatore.
 
 ## Struttura
 
