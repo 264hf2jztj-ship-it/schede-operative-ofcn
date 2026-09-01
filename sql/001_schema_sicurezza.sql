@@ -162,6 +162,9 @@ declare
     matricola_chiave text;
     priorita jsonb;
     punteggi jsonb;
+    turni_da_evitare jsonb;
+    disponibilita_natale text;
+    disponibilita_estate text;
     punteggio_testo text;
     posizione integer;
     turno integer;
@@ -243,10 +246,13 @@ begin
 
     priorita := scheda #> '{preferenze,ordinePrioritaTurni}';
     punteggi := scheda #> '{preferenze,punteggiPrioritaTurni}';
+    turni_da_evitare := scheda #> '{preferenze,turniDaEvitare}';
+    disponibilita_natale := scheda #>> '{preferenze,disponibilitaNatale}';
+    disponibilita_estate := scheda #>> '{preferenze,disponibilitaEstate}';
 
-    if jsonb_typeof(priorita) <> 'array'
-       or jsonb_array_length(priorita) <> 6 then
-        raise exception 'L''ordine di priorità deve contenere sei turni';
+    if jsonb_typeof(priorita) is distinct from 'array'
+       or jsonb_array_length(priorita) <> 3 then
+        raise exception 'L''ordine di priorità deve contenere tre turni';
     end if;
 
     if exists (
@@ -257,27 +263,58 @@ begin
        or (
            select count(distinct elemento.valore)
              from jsonb_array_elements_text(priorita) elemento(valore)
-       ) <> 6 then
-        raise exception 'Ogni turno da 1 a 6 deve comparire una sola volta';
+       ) <> 3 then
+        raise exception 'I tre turni preferiti devono essere diversi e compresi tra 1 e 6';
     end if;
 
     if jsonb_typeof(punteggi) <> 'object'
        or (
            select count(*)
              from jsonb_object_keys(punteggi)
-       ) <> 6 then
+       ) <> 3 then
         raise exception 'Punteggi di priorità non validi';
     end if;
 
-    for posizione in 0..5 loop
+    for posizione in 0..2 loop
         turno := (priorita ->> posizione)::integer;
         punteggio_testo := punteggi ->> ('T' || turno::text);
 
-        if coalesce(punteggio_testo, '') !~ '^[1-6]$'
-           or punteggio_testo::integer <> 6 - posizione then
+        if coalesce(punteggio_testo, '') !~ '^[1-3]$'
+           or punteggio_testo::integer <> 3 - posizione then
             raise exception 'Punteggio non coerente per il turno %', turno;
         end if;
     end loop;
+
+    if jsonb_typeof(turni_da_evitare) is distinct from 'array' then
+        raise exception 'I turni da evitare devono essere un elenco';
+    end if;
+
+    if jsonb_array_length(turni_da_evitare) > 6
+       or exists (
+           select 1
+             from jsonb_array_elements_text(turni_da_evitare) elemento(valore)
+            where elemento.valore !~ '^[1-6]$'
+       )
+       or (
+           select count(distinct elemento.valore)
+             from jsonb_array_elements_text(turni_da_evitare) elemento(valore)
+       ) <> jsonb_array_length(turni_da_evitare) then
+        raise exception 'I turni da evitare devono essere univoci e compresi tra 1 e 6';
+    end if;
+
+    if exists (
+        select 1
+          from jsonb_array_elements_text(turni_da_evitare) evitato(valore)
+          join jsonb_array_elements_text(priorita) preferito(valore)
+            on preferito.valore = evitato.valore
+    ) then
+        raise exception 'Un turno preferito non può essere anche un turno da evitare';
+    end if;
+
+    if coalesce(disponibilita_natale, '') not in ('DISPONIBILE', 'NON_DISPONIBILE')
+       or coalesce(disponibilita_estate, '') not in ('DISPONIBILE', 'NON_DISPONIBILE') then
+        raise exception 'Disponibilità Natale o Estate non valida';
+    end if;
 
     return new;
 end;
