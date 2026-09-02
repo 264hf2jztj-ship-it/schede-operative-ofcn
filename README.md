@@ -17,7 +17,7 @@ Sono previsti:
 
 Il form genera un JSON importabile dal software locale, invia una copia
 immutabile a Supabase e permette al compilatore di scaricare una copia PDF.
-Raccoglie soltanto matricola, cognome, nome, indisponibilità, tre priorità con
+Raccoglie soltanto matricola, cognome, nome, un massimo di due periodi di indisponibilità, tre priorità con
 punteggio 3–2–1, turni da evitare come vincoli deboli, disponibilità per Natale
 ed Estate, disponibilità al doppio turno e note. Per il collaudo vanno utilizzati
 esclusivamente dati fittizi.
