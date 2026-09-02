@@ -8,6 +8,7 @@ const STORAGE_KEY = "aup_pianificazione_ofcn_scadenze_operative_v1";
 const PDF_DRAFT_RECOVERY_KEY = "ofcn-pdf-draft-recovery-v1";
 const TURN_COUNT = 6;
 const PRIORITY_COUNT = 3;
+const MAX_UNAVAILABILITIES = 2;
 
 const elements = {
   currentYear: document.querySelector("#current-year"),
@@ -307,6 +308,9 @@ function buildPayload() {
   if (!activeCampaign) throw new Error("Nessuna campagna aperta.");
   if (!elements.responseForm?.reportValidity()) {
     throw new Error("Controlla i campi obbligatori evidenziati.");
+  }
+  if (unavailabilities.length > MAX_UNAVAILABILITIES) {
+    throw new Error("Puoi inserire al massimo 2 periodi di indisponibilità.");
   }
 
   const matricola = textValue("#matricola", true);
@@ -737,7 +741,7 @@ function applyDraftSnapshot(snapshot) {
   if (doubleShift) doubleShift.value = String(snapshot.availabilityDoubleShift || "");
 
   unavailabilities = Array.isArray(snapshot.unavailabilities)
-    ? snapshot.unavailabilities.map((item) => ({ ...item }))
+    ? snapshot.unavailabilities.slice(0, MAX_UNAVAILABILITIES).map((item) => ({ ...item }))
     : [];
   refreshTurnChoices();
   renderRecords();
@@ -1002,6 +1006,9 @@ async function handleSubmit(event) {
 function addUnavailability() {
   setMessage(elements.responseMessage);
   try {
+    if (unavailabilities.length >= MAX_UNAVAILABILITIES) {
+      throw new Error("Hai già inserito il numero massimo di periodi di indisponibilità.");
+    }
     const period = datePair("#unavailability-start", "#unavailability-end", "l'indisponibilità");
     if (!period.dataInizio) throw new Error("Inserisci le date dell'indisponibilità.");
     unavailabilities.push({
@@ -1045,7 +1052,14 @@ function renderRecords() {
       );
     });
   }
-  if (elements.unavailabilityCount) elements.unavailabilityCount.textContent = `${unavailabilities.length} inserite`;
+  if (elements.unavailabilityCount) {
+    elements.unavailabilityCount.textContent = `${unavailabilities.length}/${MAX_UNAVAILABILITIES} inserite`;
+  }
+  if (elements.addUnavailability) {
+    const limitReached = unavailabilities.length >= MAX_UNAVAILABILITIES;
+    elements.addUnavailability.disabled = limitReached;
+    elements.addUnavailability.textContent = limitReached ? "Limite raggiunto" : "Aggiungi periodo";
+  }
 }
 
 function refreshTurnChoices() {
