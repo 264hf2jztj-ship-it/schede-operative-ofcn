@@ -12,7 +12,7 @@
     >
     <title>Accesso · Scheda operativa OFCN</title>
     <link rel="stylesheet" href="assets/css/app.css">
-    <script type="module" src="assets/js/app.js?v=20260901-8"></script>
+    <script type="module" src="assets/js/app.js?v=20260902-1"></script>
   </head>
   <body>
     <main class="page-shell">
@@ -159,7 +159,17 @@
 
             <details class="form-section">
               <summary>3. Indisponibilità personali <span id="unavailability-count">0 inserite</span></summary>
-              <p class="section-help">Puoi inserire al massimo 2 periodi nei quali non puoi essere impiegato.</p>
+              <p class="section-help">
+                Si raccomanda di indicare al massimo 2 periodi. Puoi comunque
+                inserirne altri: saranno valutati dall'Ufficio Piani durante l'importazione.
+              </p>
+              <p
+                id="unavailability-warning"
+                class="form-message form-message--warning"
+                hidden
+                role="status"
+                aria-live="polite"
+              ></p>
               <div class="form-grid">
                 <div class="field-group"><label for="unavailability-start">Data inizio</label><input id="unavailability-start" type="date"></div>
                 <div class="field-group"><label for="unavailability-end">Data fine</label><input id="unavailability-end" type="date"></div>
