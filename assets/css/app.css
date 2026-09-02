@@ -667,6 +667,11 @@ details.form-section[open] summary {
   color: var(--success);
 }
 
+.form-message--warning {
+  color: var(--warning);
+  font-weight: 700;
+}
+
 .security-note {
   margin: 1rem 0 0;
   color: var(--muted);
