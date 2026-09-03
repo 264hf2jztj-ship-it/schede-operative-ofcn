@@ -1,48 +1,70 @@
 # Schede operative OFCN
 
-Portale web separato dal software **Automazione Ufficio Piani**.
+Portale web separato dal software **Automazione Ufficio Piani**, pubblicato con
+GitHub Pages e collegato al progetto Supabase dedicato.
 
 ## Stato
 
-Il form operativo e l'area amministrativa collegati a Supabase sono pubblicati
-e in collaudo con la campagna 2027 temporaneamente aperta.
+Lo sviluppo del portale pubblico e dell'area amministrativa è concluso. La
+campagna annuale **2027** è attiva senza date di apertura o chiusura
+automatica e resterà disponibile finché non verrà chiusa manualmente. Dopo la
+pulizia conclusiva il database non contiene schede di collaudo.
 
-Sono previsti:
+## Accessi
 
-- un account condiviso per il personale;
-- due account amministratore separati, uno per ciascun reparto;
-- sessioni contemporanee indipendenti;
+- `PLAN_OFCN`: account condiviso del personale, utilizzabile
+  contemporaneamente da più dispositivi;
+- `ADMIN_2`: amministratore del 2° Gruppo;
+- `ADMIN_50`: amministratore del 50° Gruppo;
 - logout limitato al dispositivo corrente;
+- registrazione pubblica e accessi anonimi disattivati;
 - nessuna anagrafica preventiva del personale.
 
-Il form genera un JSON importabile dal software locale, invia una copia
-immutabile a Supabase e permette al compilatore di scaricare una copia PDF.
-Raccoglie soltanto matricola, cognome, nome, periodi di indisponibilità (due consigliati, senza blocco tecnico), tre priorità con
-punteggio 3–2–1, turni da evitare come vincoli deboli, disponibilità per Natale
-ed Estate, disponibilità al doppio turno e note. Per il collaudo vanno utilizzati
-esclusivamente dati fittizi.
+Supabase Auth usa internamente indirizzi email tecnici, mentre il portale mostra
+soltanto i nomi utente. Le password non sono presenti nel repository.
 
-La scheda raccoglie inoltre corsi, estensioni di qualifica ed esercitazioni
-desiderate. La scelta obbligatoria tra 2° Gruppo e 50° Gruppo instrada ogni
-risposta verso una coda amministrativa separata e protetta.
+## Scheda 2027
 
-Collaudi superati: login `PLAN_OFCN`, persistenza della sessione, logout locale,
-nuovo accesso e instradamento separato delle risposte.
+Il form raccoglie:
 
-Il personale accederà con il nome utente `PLAN_OFCN`. Il frontend lo associa
-all'identificativo email tecnico richiesto internamente da Supabase Auth.
+- matricola, cognome e nome;
+- reparto destinatario: 2° Gruppo oppure 50° Gruppo;
+- periodi di indisponibilità, con avviso al raggiungimento dei due consigliati
+  ma senza bloccare periodi ulteriori;
+- tre turni in ordine di priorità, con punteggio 3–2–1;
+- turni da evitare preferibilmente come vincoli deboli;
+- disponibilità per Natale, Estate e doppio turno;
+- corsi interni o esterni alla Brigata, estensioni di qualifica ed esercitazioni
+  desiderate;
+- note generali.
 
-Gli amministratori accedono con `ADMIN_2` e `ADMIN_50`. Il ruolo effettivo viene
-letto dalla tabella protetta `amministratori`: il nome utente nel frontend non
-attribuisce permessi. Ogni amministratore vede solo la coda del proprio reparto,
-può aprire il dettaglio, aggiornare lo stato e scaricare il JSON originale di una
-scheda oppure una raccolta JSON delle schede selezionate. Può inoltre eliminare
-definitivamente una scheda inviata per errore, dopo una conferma esplicita; la
-policy RLS limita la cancellazione alle sole schede del proprio reparto.
+La copia destinata al compilatore è un PDF. A Supabase viene inviato il payload
+JSON versione 1, compatibile con il successivo adeguamento dell'importatore
+locale.
 
-Il formato della raccolta amministrativa è `raccolta_schede_operative_ofcn`
-versione 1. Ogni elemento contiene metadati di ricezione e il `payload` originale
-inviato dal compilatore.
+## Area amministrativa
+
+Ogni amministratore può operare esclusivamente sulle schede del proprio reparto:
+
+- consultare e filtrare le risposte;
+- aggiornare lo stato;
+- scaricare il JSON singolo o una raccolta di schede selezionate;
+- vedere data e amministratore dell'ultimo download avviato;
+- eliminare definitivamente una scheda.
+
+Se una scheda non risulta ancora scaricata, il portale mostra un avviso
+aggiuntivo prima della cancellazione, senza impedirla. Il browser può certificare
+soltanto l'avvio del download, non l'effettivo salvataggio del file sul computer.
+
+## Procedura operativa
+
+1. Scaricare le schede dall'area amministrativa del reparto.
+2. Salvare i JSON sul computer e conservarne preferibilmente una seconda copia.
+3. Importarli nel software locale.
+4. Verificare l'importazione.
+5. Eliminare da Supabase le schede già esportate e non più necessarie online.
+
+La procedura completa è descritta in `docs/CHIUSURA_OPERATIVA.md`.
 
 ## Struttura
 
@@ -57,16 +79,16 @@ docs/
   STEP_2_SUPABASE.md
   STEP_3_DATABASE.md
   STEP_4_FORM.md
+  CHIUSURA_OPERATIVA.md
 sql/
   001_schema_sicurezza.sql
   002_reparti_formazione.sql
-  003_cancellazione_schede_admin.sql
+  003_cancellazione_risposte_amministratori.sql
+  004_tracciamento_download_amministrativo.sql
 ```
 
 La chiave pubblicabile Supabase presente in `config.js` è destinata al browser.
-Chiavi `service_role`, `sb_secret_...`, password e credenziali personali non devono
-mai essere inserite nel repository.
+Chiavi `service_role`, `sb_secret_...`, password e credenziali personali non
+devono mai essere inserite nel repository.
 
-## Pubblicazione
-
-GitHub Pages pubblica la radice del branch `main` tramite GitHub Actions.
+GitHub Pages pubblica automaticamente la radice del branch `main`.
