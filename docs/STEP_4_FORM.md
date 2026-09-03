@@ -1,46 +1,47 @@
-# Step 4 — Form operativo
+# Step 4 — Form operativo e area amministrativa
 
 ## Stato
 
-Pubblicato e in collaudo. La campagna 2027 è aperta temporaneamente per sette
-giorni a partire dal 31 agosto 2026. In questa fase devono essere usati soltanto
-dati fittizi.
+Versione definitiva pubblicata su GitHub Pages. La campagna 2027 è attiva
+senza una data di chiusura automatica.
 
-## Funzioni disponibili
+## Form del personale
 
-- caricamento della campagna aperta dopo il login;
-- matricola, cognome, nome, esperienza e ruolo OFCN;
-- scadenze operative;
-- più periodi di indisponibilità;
-- più corsi o esercitazioni con buffer;
-- turni e periodi preferiti o da evitare;
-- disponibilità Natale ed Estate;
+- dati personali limitati a matricola, cognome e nome;
+- selezione obbligatoria del 2° o del 50° Gruppo;
+- indisponibilità multiple;
+- avviso dal secondo periodo, senza bloccare quelli successivi;
+- tre turni in ordine di priorità con punteggio 3–2–1;
+- turni da evitare come soft constraint;
+- disponibilità per Natale, Estate e doppio turno;
+- corsi, estensioni di qualifica ed esercitazioni desiderate;
 - note;
-- download della bozza JSON;
-- invio a Supabase con pulsante bloccato durante la richiesta;
-- download della copia congelata dopo l'invio;
-- possibilità di inviare intenzionalmente una nuova versione.
+- PDF locale della bozza o della scheda inviata;
+- invio idempotente a Supabase.
 
-Il modulo non salva una bozza con dati personali in `localStorage`. I dati
-restano nella memoria della pagina fino a invio, aggiornamento o chiusura.
+Il modulo non conserva stabilmente una bozza con dati personali nel browser.
+La memoria di recupero usata durante la generazione PDF è temporanea.
 
-## Payload
+## Area amministrativa
 
-La funzione `buildPayload()` alimenta sia il download sia l'invio. Il formato è
-`schede_operative_ofcn`, versione 1, con un solo anno e una sola matricola. Il
-campo `storageKey` coincide con quello usato dall'importatore locale:
-`aup_pianificazione_ofcn_scadenze_operative_v1`.
+Ogni amministratore vede soltanto il proprio reparto e può:
 
-## Collaudo richiesto
+- cercare per matricola o nominativo;
+- filtrare per stato;
+- aprire il dettaglio;
+- aggiornare lo stato;
+- scaricare il JSON originale;
+- scaricare una raccolta JSON delle schede selezionate;
+- vedere l'ultimo download avviato;
+- eliminare definitivamente una scheda.
 
-1. accedere con `PLAN_OFCN`;
-2. verificare che compaia la campagna 2027;
-3. usare matricola e nominativo fittizi;
-4. aggiungere e rimuovere un'indisponibilità;
-5. aggiungere e rimuovere un corso;
-6. scaricare la bozza JSON;
-7. inviare una scheda di prova;
-8. scaricare la copia inviata.
+Prima della cancellazione viene sempre richiesta una conferma. Se la scheda non
+risulta scaricata, la conferma contiene un avviso aggiuntivo.
 
-Dopo il collaudo, la risposta fittizia verrà eliminata e la campagna verrà
-richiusa prima degli sviluppi successivi.
+## Procedura consigliata
+
+Scaricare → salvare sul computer → importare nel software locale → verificare
+l'importazione → eliminare da Supabase.
+
+Il tracciamento del download è un aiuto operativo e non sostituisce il controllo
+del file effettivamente salvato.
