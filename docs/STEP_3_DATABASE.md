@@ -2,79 +2,76 @@
 
 ## Stato
 
-Completato e applicato al progetto Supabase `zwevsjvvuycbkqddwiky`.
-
-Non sono state inserite campagne reali, risposte di produzione o anagrafiche
-del personale.
+Schema applicato al progetto Supabase `zwevsjvvuycbkqddwiky`. Dopo la pulizia
+conclusiva il database contiene zero risposte di collaudo.
 
 ## Tabelle
 
-- `public.campagne`: anni disponibili e finestre di apertura;
-- `public.risposte`: invii immutabili, payload JSON, stato e timestamp server;
-- `public.amministratori`: account autorizzati alla gestione;
-- `private.account_personale_condiviso`: UUID dell'account comune `PLAN_OFCN`.
+- `public.campagne`: anno e finestra temporale della compilazione;
+- `public.risposte`: payload JSON, stato, timestamp server, reparto e
+  tracciamento del download;
+- `public.amministratori`: UUID amministrativo e reparto autorizzato;
+- `private.account_personale_condiviso`: UUID dell'account `PLAN_OFCN`.
 
-La tabella privata ha RLS attiva e nessuna policy client: il comportamento
-deny-all è intenzionale. Le funzioni interne autorizzate la consultano con
-`SECURITY DEFINER`, `search_path` vuoto e controllo esplicito di `auth.uid()`.
+RLS è attiva su tutte le tabelle. La tabella privata non ha policy client:
+il comportamento deny-all è intenzionale.
 
-## Contratto JSON
+## Campagna 2027
 
-Il database accetta lo stesso formato già importabile dal software locale:
+La campagna è configurata con:
 
-```json
-{
-  "tipoFile": "schede_operative_ofcn",
-  "versione": 1,
-  "annoCorrente": 2027,
-  "schedeOperative": {
-    "2027": {
-      "MATRICOLA": {
-        "matricola": "MATRICOLA",
-        "nominativo": "COGNOME NOME",
-        "anno": 2027
-      }
-    }
-  }
-}
-```
+- anno: 2027;
+- flag `aperta` attivo;
+- nessuna data di apertura;
+- nessuna data di chiusura automatica;
+- versione payload: 1.
 
-Ogni invio deve contenere un solo anno e una sola scheda. Matricola e anno
-devono coincidere tra chiavi e contenuto. Il limite del payload è 256 KiB.
+Resterà compilabile finché il flag `aperta` non verrà disattivato manualmente.
 
 ## Permessi effettivi
 
-| Operazione | Non autenticato | Account condiviso | Amministratore |
+| Operazione | Non autenticato | PLAN_OFCN | Admin proprio reparto |
 |---|---:|---:|---:|
-| Leggere campagne aperte | No | Sì | Sì |
+| Leggere la campagna aperta | No | Sì | Sì |
 | Inserire una risposta | No | Sì | No |
 | Leggere risposte | No | No | Sì |
 | Modificare il payload | No | No | No |
 | Cambiare stato | No | No | Sì |
-| Cancellare risposte | No | No | No |
+| Registrare un download | No | No | Sì |
+| Eliminare una risposta | No | No | Sì |
 
-Gli amministratori possono aggiornare soltanto la colonna `stato`; timestamp e
-UUID di elaborazione vengono determinati dal database.
+Gli amministratori vedono, aggiornano, scaricano ed eliminano solamente le
+schede del reparto assegnato.
 
-## Controlli superati
+## Tracciamento download
 
-- invio valido dell'account condiviso;
-- impossibilità per il personale di leggere le risposte;
-- rifiuto di un payload alterato;
-- idempotenza tramite `submission_id` univoco;
-- lettura amministrativa;
-- cambio stato amministrativo con audit server-side;
-- nessun dato di prova persistito;
-- nessun privilegio `anon` sulle risposte;
-- payload non aggiornabile dal ruolo `authenticated`;
-- RLS attiva su tutte le tabelle pubbliche e sulla tabella privata.
+Le colonne `scaricato_il` e `scaricato_da` vengono valorizzate dal database
+quando l'amministratore avvia un download singolo o multiplo. Un trigger forza
+il timestamp server e l'UUID autenticato: il frontend non può attribuire il
+download a un altro utente.
 
-Gli advisor prestazioni indicano gli indici come non usati perché le tabelle
-sono ancora vuote. L'avviso Auth relativo alle password compromesse dipende
-dalla funzione `Leaked Password Protection`, disponibile sui piani Supabase che
-la includono.
+Il tracciamento certifica l'avvio del download dal portale. Non può certificare
+che il browser abbia completato il salvataggio o che il file sia stato
+successivamente conservato.
 
-## Script riproducibile
+## Contratto JSON
 
-Lo schema completo è in `sql/001_schema_sicurezza.sql`. Non contiene password,
-secret key o dati personali.
+Ogni invio contiene un solo anno e una sola scheda, con:
+
+- `tipoFile: "schede_operative_ofcn"`;
+- `versione: 1`;
+- `annoCorrente: 2027`;
+- reparto coerente tra payload e scheda;
+- identità coerente tra chiave e contenuto;
+- tre priorità distinte con punteggio 3–2–1;
+- disponibilità valide;
+- payload massimo 256 KiB.
+
+Il numero di periodi di indisponibilità non è limitato dal database.
+
+## Script riproducibili
+
+- `sql/001_schema_sicurezza.sql`;
+- `sql/002_reparti_formazione.sql`;
+- `sql/003_cancellazione_risposte_amministratori.sql`;
+- `sql/004_tracciamento_download_amministrativo.sql`.
