@@ -525,6 +525,14 @@ function renderAdminResponses() {
     addAdminDetail(detail, "Corsi e qualifiche desiderati", sheet?.corsiQualificheDesiderati, true);
     addAdminDetail(detail, "Esercitazioni desiderate", sheet?.esercitazioniDesiderate, true);
     addAdminDetail(detail, "Note", sheet?.note, true);
+    addAdminDetail(
+      detail,
+      "Download amministrativo",
+      response.scaricato_il
+        ? `Ultimo download avviato il ${formatAdminDateTime(response.scaricato_il)}`
+        : "Non ancora scaricata dal portale",
+      true,
+    );
 
     checkbox.addEventListener("click", (event) => event.stopPropagation());
     checkbox.addEventListener("change", () => {
@@ -532,10 +540,7 @@ function renderAdminResponses() {
       else selectedAdminResponseIds.delete(response.id);
       updateAdminSelectionControls();
     });
-    downloadButton.addEventListener("click", () => {
-      downloadJson(response.risposta_json, getResponseFilename(response));
-      setMessage(elements.adminMessage, "JSON originale della scheda scaricato.", "success");
-    });
+    downloadButton.addEventListener("click", () => downloadAdminResponse(response, downloadButton));
     deleteButton.addEventListener("click", () => deleteAdminResponse(response, deleteButton));
     stateSelect.addEventListener("change", () => updateAdminResponseStatus(response, stateSelect));
     elements.adminList.appendChild(fragment);
@@ -558,7 +563,7 @@ async function loadAdminResponses() {
   try {
     const { data, error } = await supabase
       .from("risposte")
-      .select("id, submission_id, anno, risposta_json, reparto_destinatario, stato, ricevuto_il, elaborato_il")
+      .select("id, submission_id, anno, risposta_json, reparto_destinatario, stato, ricevuto_il, elaborato_il, scaricato_il, scaricato_da")
       .eq("reparto_destinatario", currentAdminUnit)
       .order("ricevuto_il", { ascending: false })
       .limit(1000);
@@ -608,9 +613,13 @@ async function updateAdminResponseStatus(response, select) {
 async function deleteAdminResponse(response, button) {
   const sheet = getResponseSheet(response);
   const identity = [sheet?.matricola, sheet?.cognome, sheet?.nome].filter(Boolean).join(" · ");
+  const downloadWarning = response.scaricato_il
+    ? ""
+    : "\n\nATTENZIONE: questa scheda non risulta ancora scaricata dal portale.";
   const confirmed = window.confirm(
-    `Eliminare definitivamente la scheda${identity ? ` di ${identity}` : " selezionata"}?\n\n` +
-    "Questa operazione non può essere annullata.",
+    `Eliminare definitivamente la scheda${identity ? ` di ${identity}` : " selezionata"}?` +
+    downloadWarning +
+    "\n\nQuesta operazione non può essere annullata.",
   );
   if (!confirmed) return;
 
@@ -643,7 +652,56 @@ async function deleteAdminResponse(response, button) {
   }
 }
 
-function downloadSelectedAdminResponses() {
+async function markAdminResponsesDownloaded(responses) {
+  const ids = [...new Set(responses.map((response) => response.id))];
+  if (!ids.length) return;
+
+  const { data, error } = await supabase
+    .from("risposte")
+    .update({ scaricato_il: new Date().toISOString() })
+    .in("id", ids)
+    .eq("reparto_destinatario", currentAdminUnit)
+    .select("id, scaricato_il, scaricato_da");
+
+  if (error || data?.length !== ids.length) {
+    throw error || new Error("Registrazione del download incompleta");
+  }
+
+  const updates = new Map(data.map((item) => [item.id, item]));
+  responses.forEach((response) => {
+    const update = updates.get(response.id);
+    if (!update) return;
+    response.scaricato_il = update.scaricato_il;
+    response.scaricato_da = update.scaricato_da;
+  });
+}
+
+async function downloadAdminResponse(response, button) {
+  downloadJson(response.risposta_json, getResponseFilename(response));
+  button.disabled = true;
+  button.textContent = "Registrazione…";
+  setMessage(elements.adminMessage);
+
+  try {
+    await markAdminResponsesDownloaded([response]);
+    renderAdminResponses();
+    setMessage(
+      elements.adminMessage,
+      "Download del JSON avviato e registrato correttamente.",
+      "success",
+    );
+  } catch {
+    button.disabled = false;
+    button.textContent = "Scarica JSON";
+    setMessage(
+      elements.adminMessage,
+      "Il download è stato avviato, ma non è stato possibile registrarlo. Riprova prima di eliminare la scheda.",
+      "error",
+    );
+  }
+}
+
+async function downloadSelectedAdminResponses() {
   const selected = adminResponses.filter((response) => selectedAdminResponseIds.has(response.id));
   if (!selected.length) {
     setMessage(elements.adminMessage, "Seleziona almeno una scheda da scaricare.", "error");
@@ -666,9 +724,30 @@ function downloadSelectedAdminResponses() {
   };
   const datePart = new Date().toISOString().slice(0, 10);
   downloadJson(exportPayload, `raccolta_schede_ofcn_${safeFilenamePart(currentAdminUnit)}_${datePart}.json`);
-  setMessage(elements.adminMessage, `Raccolta di ${selected.length} schede scaricata.`, "success");
-}
 
+  if (elements.adminDownloadSelected) {
+    elements.adminDownloadSelected.disabled = true;
+    elements.adminDownloadSelected.textContent = "Registrazione…";
+  }
+  setMessage(elements.adminMessage);
+
+  try {
+    await markAdminResponsesDownloaded(selected);
+    renderAdminResponses();
+    setMessage(
+      elements.adminMessage,
+      `Download della raccolta di ${selected.length} schede avviato e registrato.`,
+      "success",
+    );
+  } catch {
+    updateAdminSelectionControls();
+    setMessage(
+      elements.adminMessage,
+      "Il download è stato avviato, ma la registrazione non è riuscita. Riprova prima di eliminare le schede.",
+      "error",
+    );
+  }
+}
 function toggleAllFilteredAdminResponses() {
   const filtered = getFilteredAdminResponses();
   if (elements.adminSelectAll?.checked) {
