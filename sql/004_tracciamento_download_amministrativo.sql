@@ -10,10 +10,11 @@ alter table public.risposte
 
 alter table public.risposte
   add constraint risposte_download_coerente
-  check (
-    (scaricato_il is null and scaricato_da is null)
-    or (scaricato_il is not null and scaricato_da is not null)
-  );
+  check (scaricato_da is null or scaricato_il is not null);
+
+create index if not exists risposte_scaricato_da_idx
+  on public.risposte (scaricato_da)
+  where scaricato_da is not null;
 
 create or replace function private.registra_download_risposta()
 returns trigger
