@@ -8,7 +8,7 @@ const STORAGE_KEY = "aup_pianificazione_ofcn_scadenze_operative_v1";
 const PDF_DRAFT_RECOVERY_KEY = "ofcn-pdf-draft-recovery-v1";
 const TURN_COUNT = 6;
 const PRIORITY_COUNT = 3;
-const RECOMMENDED_UNAVAILABILITIES = 2;
+const RECOMMENDED_UNAVAILABILITIES = 1;
 
 const elements = {
   currentYear: document.querySelector("#current-year"),
@@ -1138,9 +1138,9 @@ function renderRecords() {
     elements.unavailabilityWarning.hidden = !recommendedMaximumReached;
     elements.unavailabilityWarning.textContent =
       unavailabilities.length === RECOMMENDED_UNAVAILABILITIES
-        ? "Hai raggiunto i 2 periodi consigliati. Puoi comunque aggiungerne altri."
+        ? "Hai raggiunto il periodo consigliato. Puoi comunque aggiungerne altri."
         : recommendedMaximumReached
-          ? `Hai inserito ${unavailabilities.length} periodi, oltre i 2 consigliati. Saranno valutati dall'Ufficio Piani durante l'importazione.`
+          ? `Hai inserito ${unavailabilities.length} periodi, oltre l'unico periodo consigliato. Saranno valutati dall'Ufficio Piani durante l'importazione.`
           : "";
   }
 }
