@@ -968,11 +968,12 @@ async function downloadPayloadPdf(payload) {
   }
 
   const pdfBlob = doc.output("blob");
+  const isAndroid = /Android/i.test(navigator.userAgent || "");
   let pdfFile = null;
   let canShareFile = false;
 
   try {
-    if (typeof File === "function") {
+    if (!isAndroid && typeof File === "function") {
       pdfFile = new File([pdfBlob], filename, { type: "application/pdf" });
       canShareFile = typeof navigator.share === "function"
         && typeof navigator.canShare === "function"
@@ -983,11 +984,16 @@ async function downloadPayloadPdf(payload) {
   }
 
   if (canShareFile) {
-    await navigator.share({
-      files: [pdfFile],
-      title: `Scheda operativa OFCN ${year}`,
-    });
-    return "shared";
+    try {
+      await navigator.share({
+        files: [pdfFile],
+        title: `Scheda operativa OFCN ${year}`,
+      });
+      return "shared";
+    } catch (error) {
+      if (error?.name === "AbortError") throw error;
+      // Se la condivisione file non è autorizzata, usa il download standard.
+    }
   }
 
   const objectUrl = URL.createObjectURL(pdfBlob);
